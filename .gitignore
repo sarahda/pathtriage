@@ -216,3 +216,24 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# AWS / Azure credentials (commit X)
+.env
+.env.local
+*.pem
+*.key
+credentials
+.aws/credentials
+
+# Terraform state 
+*.tfstate
+*.tfstate.*
+*.tfvars
+.terraform/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
