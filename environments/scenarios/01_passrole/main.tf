@@ -89,6 +89,7 @@ resource "aws_iam_user_policy" "vulnerable_passrole" {
           "ec2:DescribeImages",
           "ec2:DescribeSubnets",
           "ec2:DescribeSecurityGroups",
+          "ec2:CreateTags",
           "iam:GetInstanceProfile",
           "iam:ListInstanceProfiles",
           "iam:ListRoles",

