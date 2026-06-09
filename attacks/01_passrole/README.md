@@ -2,9 +2,45 @@
 
 ## Overview
 
-A low-privileged IAM user with `iam:PassRole` (scoped to a specific role) + `ec2:RunInstances` can attach a high-privileged IAM role to an EC2 instance they control. By launching such an instance and querying the Instance Metadata Service (IMDS), the attacker extracts temporary credentials of the attached role — effectively escalating privileges.
+A low-privileged IAM user with `iam:PassRole` (scoped to a specific role) +
+`ec2:RunInstances` can attach a high-privileged IAM role to an EC2 instance
+they control. By launching such an instance and querying the Instance
+Metadata Service (IMDS), the attacker extracts temporary credentials of the
+attached role — effectively escalating privileges.
 
-This path is one of the most classic and well-documented IAM privilege escalation primitives in AWS.
+This path is one of the most classic and well-documented IAM privilege
+escalation primitives in AWS. The core thesis: **neither `iam:PassRole` nor
+`ec2:RunInstances` is dangerous in isolation — the combination is the
+vulnerability.**
+
+## Attack Flow
+
+```
+┌─────────────────────────┐
+│ pathtriage-low-priv-    │   Permissions held:
+│ attacker (IAM user)     │   • iam:PassRole (scoped to admin role)
+└──────────┬──────────────┘   • ec2:RunInstances
+           │
+           │  (1) Enumerate passable roles
+           │  (2) Launch EC2 with admin instance profile attached
+           ▼
+┌─────────────────────────┐
+│ EC2 instance running    │
+│ with admin role         │
+└──────────┬──────────────┘
+           │  (3) Query IMDS:
+           │      http://169.254.169.254/latest/meta-data/
+           │          iam/security-credentials/<role-name>
+           ▼
+┌─────────────────────────┐
+│ Temporary credentials   │   → effective admin access
+│ for admin role          │     (validated via sts:GetCallerIdentity)
+└─────────────────────────┘
+
+Defender visibility in CloudTrail:
+  iam:PassRole  +  ec2:RunInstances
+  ─── neither event is suspicious individually ───
+```
 
 ## MITRE ATT&CK Mapping
 
@@ -42,29 +78,28 @@ The low-priv user has the following misconfigured permissions:
 }
 ```
 
-The vulnerability is the *combination*: `PassRole` to a high-priv role + `RunInstances` lets the attacker pivot from low-priv to admin.
+The vulnerability is the **combination**: `PassRole` to a high-priv role +
+`RunInstances` lets the attacker pivot from low-priv to admin.
 
 ## Attack Steps
 
-1. **Configure low-priv credentials** as an AWS CLI profile (or env vars).
-2. **Enumerate roles** the user can pass: `aws iam list-roles`.
-3. **Identify a high-priv role** with an EC2 service trust policy.
-4. **Find an Amazon Linux 2023 AMI ID** for the region.
-5. **Launch EC2 instance** with the target role's instance profile attached.
-6. **Wait for the instance** to reach `running` state.
-7. **Extract credentials** from IMDS:
-   ```
-   http://169.254.169.254/latest/meta-data/iam/security-credentials/<role-name>
-   ```
-8. **Use extracted credentials** to perform privileged actions (validated via `sts:GetCallerIdentity`).
-9. **Cleanup**: terminate the EC2 instance to avoid orphaned resources.
+1. Configure low-priv credentials as an AWS CLI profile (or env vars).
+2. Enumerate roles the user can pass: `aws iam list-roles`.
+3. Identify a high-priv role with an EC2 service trust policy.
+4. Find an Amazon Linux 2023 AMI ID for the region.
+5. Launch EC2 instance with the target role's instance profile attached.
+6. Wait for the instance to reach `running` state.
+7. Extract credentials from IMDS:
+   `http://169.254.169.254/latest/meta-data/iam/security-credentials/<role-name>`
+8. Use extracted credentials to perform privileged actions (validated via `sts:GetCallerIdentity`).
+9. Cleanup: terminate the EC2 instance to avoid orphaned resources.
 
 ## Running the PoC
 
 From the project root:
 
 ```bash
-# Set low-priv credentials as a named profile, or use env vars
+# Set low-priv credentials as env vars (or use a named profile)
 export AWS_ACCESS_KEY_ID=$(cd environments/baseline && terraform output -raw low_priv_access_key_id)
 export AWS_SECRET_ACCESS_KEY=$(cd environments/baseline && terraform output -raw low_priv_secret_access_key)
 export AWS_DEFAULT_REGION=ap-southeast-2
@@ -75,7 +110,12 @@ python attacks/01_passrole/exploit.py \
   --instance-profile pathtriage-passrole-admin-profile
 ```
 
-## Expected Output
+## Captured Output (PoC Verification)
+
+The following is the captured output from running the PoC end-to-end against
+a freshly deployed lab on **2026-06-08**. The full timestamped log is
+committed to this directory as `verification_log.txt` and serves as the D1
+HD criterion evidence for this path.
 
 ```
 [*] Verifying starting identity...
@@ -104,19 +144,30 @@ python attacks/01_passrole/exploit.py \
 
 ## Why This Works
 
-- AWS IAM treats `iam:PassRole` as a *transitive* permission — the user doesn't need the role's permissions themselves, only the ability to "hand it over" to a service.
-- EC2 launched with an instance profile *automatically* exposes role credentials via IMDS to anything running on the instance.
-- The defender sees only `iam:PassRole` + `ec2:RunInstances` in CloudTrail — neither suspicious in isolation.
+- AWS IAM treats `iam:PassRole` as a **transitive permission** — the user
+  doesn't need the role's permissions themselves, only the ability to
+  "hand it over" to a service.
+- EC2 launched with an instance profile **automatically exposes role
+  credentials via IMDS** to anything running on the instance.
+- The defender sees only `iam:PassRole` + `ec2:RunInstances` in CloudTrail
+  — neither suspicious in isolation. This is the central observation that
+  motivates path-based analysis over permission-level audit.
 
-## Defender Output (preview — generated by PathTriage tool)
+## Defender Output (deferred to W7)
 
-### Detection (CloudTrail / Athena)
+Detection and mitigation artefacts are deliberately deferred to W7, where
+they will be designed **once across multiple paths** to capture convergence
+points. For example, the three IMDS-based paths in the catalogue (Path 1:
+PassRole+RunInstances, Path 2: IMDS SSRF, Path 6: AssumeRole on EC2) share
+the same IMDS extraction step, so a unified detection is more valuable than
+three near-duplicates per-path.
 
-A KQL/Athena query flagging the high-risk *combination* — `PassRole` on a privileged role followed by `RunInstances` within a short window. Full query: see `defender/detection.kql` (TBD).
-
-### Mitigation (SCP)
-
-A Service Control Policy fragment denying `iam:PassRole` on roles tagged `sensitivity=high` unless the calling principal is in an approved group. Full SCP: see `defender/mitigation.scp.json` (TBD).
+Planned artefacts (to be produced in W7):
+- `defender/detection.kql` — Athena/CloudTrail query flagging the
+  `PassRole` + `RunInstances` combination within a short time window
+- `defender/mitigation.scp.json` — SCP fragment denying `iam:PassRole` on
+  roles tagged `sensitivity=high` unless the calling principal is in an
+  approved group
 
 ## Cleanup
 
@@ -134,12 +185,12 @@ terraform destroy
 - [x] Vulnerable Terraform environment
 - [x] README documentation
 - [x] PoC script (`exploit.py`)
-- [ ] Verification log (against freshly deployed lab)
-- [ ] Defender output (KQL detection + SCP mitigation)
-- [ ] Exploitability metric score
+- [x] Verification log (against freshly deployed lab, 2026-06-08)
+- [ ] Defender output (KQL detection + SCP mitigation) — *deferred to W7 for cross-path unification*
+- [ ] Exploitability metric score — *deferred to W5, requires scoring methodology design first*
 
 ## References
 
-- Rhino Security Labs — *AWS IAM Privilege Escalation Methods*: <https://rhinosecuritylabs.com/aws/aws-privilege-escalation-methods-mitigation/>
-- MITRE ATT&CK for Cloud: <https://attack.mitre.org/matrices/enterprise/cloud/>
-- AWS IAM Documentation — *Granting a user permissions to pass a role to an AWS service*: <https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_use_passrole.html>
+- Rhino Security Labs — AWS IAM Privilege Escalation Methods: https://rhinosecuritylabs.com/aws/aws-privilege-escalation-methods-mitigation/
+- MITRE ATT&CK for Cloud: https://attack.mitre.org/matrices/enterprise/cloud/
+- AWS IAM Documentation — Granting a user permissions to pass a role to an AWS service: https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_use_passrole.html
