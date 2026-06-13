@@ -1,5 +1,5 @@
 === PathTriage Path 03 — CreatePolicyVersion Privilege Escalation ===
-Captured: 2026-06-13T06:32:38Z
+Captured: 2026-06-13T06:46:51Z
 Operator:  moonhyeon@Hyeon.local
 
 --- Lab deployment evidence ---
@@ -20,6 +20,7 @@ Exploit path:
    that was denied before (e.g. iam:CreateUser)
 
 No EC2 instance and no role assumption involved.
+
 
 Target policy: arn:aws:iam::559292738121:policy/pathtriage-createpolicyversion-target
 
