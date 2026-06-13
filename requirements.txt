@@ -1,0 +1,10 @@
+# PathTriage runtime + PoC dependencies.
+# Install with: pip install -r requirements.txt
+# (Or, for the CLI as a console script: pip install -e .)
+
+# Core tool
+boto3>=1.34
+networkx>=3.2
+
+# PoC scripts
+requests>=2.31
