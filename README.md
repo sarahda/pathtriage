@@ -6,18 +6,37 @@ A Python tool that discovers IAM privilege escalation paths in AWS and Azure clo
 
 ## Project Context
 
-This is a Master's research project conducted within the UNSW COMP9301 (Term 2 2026) and COMP9302 (Term 3 2026) framework.
+Master's research project conducted within the UNSW COMP9301 (Term 2 2026) and COMP9302 (Term 3 2026) framework.
 
 ## Status
 
-🚧 Work in progress — Week 1 of COMP9301
+🚧 **Work in progress — COMP9301 Week 2 (Term 2 2026)**
+
+- Verified attack paths: **3 / 8** target
+- Tool skeleton: `pathtriage scan --provider aws` enumerates IAM and builds the initial attack graph
+
+## Attack Path Catalogue
+
+| #  | Path | Provider | Mechanism | Status |
+|----|------|----------|-----------|--------|
+| 01 | [PassRole + RunInstances](attacks/01_passrole/)              | AWS | EC2 role-assumption via instance profile        | ✅ Verified |
+| 02 | [IMDS SSRF Credential Theft](attacks/02_imds_ssrf/)          | AWS | SSRF → IMDSv1 → role credential extraction      | ✅ Verified |
+| 03 | [CreatePolicyVersion Escalation](attacks/03_createpolicyversion/) | AWS | Self-attached customer-managed policy rewrite | ✅ Verified |
+| 04–08 | *in progress*                                             | AWS / Azure | —                                         | 🕒 Planned |
+
+Each path includes a Terraform-deployed vulnerable lab, an end-to-end `exploit.py`, and a verification log. Defender output (detection queries + remediation policies) and exploitability scoring are designed cross-path in later weeks (W5 / W7) to capture convergence rather than duplicating per-path.
 
 ## Repository Structure
 
-- `attacks/` — Attack path catalogue (PoC scripts, READMEs, MITRE mappings)
-- `pathtriage/` — Core Python package (graph engine, scoring, defender output)
+- `attacks/` — Per-path catalogue (PoC scripts, READMEs, MITRE mappings, verification logs)
+- `pathtriage/` — Core Python package
+  - `cli/` — `pathtriage` command entry point
+  - `enumerators/` — Provider-specific IAM enumeration (AWS via `boto3`; Azure planned)
+  - `graph/` — NetworkX-based attack graph construction
 - `environments/` — Terraform lab configurations
-- `docs/` — Documentation (architecture, evaluation protocol, reports)
+  - `baseline/` — Shared VPC, subnet, and low-privileged user
+  - `scenarios/NN_<path>/` — Per-path vulnerable environment
+- `docs/` — Architecture, evaluation protocol, reports
 
 ## License
 
@@ -25,4 +44,4 @@ MIT — see [LICENSE](LICENSE)
 
 ## Responsible Use
 
-This project includes proof-of-concept code for IAM attack paths intended for security research and defensive purposes. PoCs should only be run in isolated, intentionally vulnerable environments (e.g., CloudGoat scenarios). Do not run against production systems without explicit authorisation.
+This project includes proof-of-concept code for IAM attack paths intended for security research and defensive purposes. PoCs should only be run in isolated, intentionally vulnerable environments (e.g., CloudGoat scenarios, or the Terraform labs in `environments/`). Do not run against production systems without explicit authorisation.
