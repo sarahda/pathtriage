@@ -121,7 +121,7 @@ Will be scored under the unified rubric once ≥5 paths exist.
 
 - [x] Terraform vulnerable environment
 - [x] PoC script (`exploit.py`)
-- [ ] Verification log — capture on first clean run
+- [x] Verification log (`verification_log.txt`)
 - [ ] Defender output (deferred to W7 — shared IMDS convergence)
 - [ ] Exploitability score (deferred to W5 — unified rubric)
 
