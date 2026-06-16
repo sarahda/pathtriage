@@ -88,7 +88,26 @@ No deviation; this entry exists so that the absent sections in per-path READMEs 
 - *Reachability edges:* `PASS_ROLE` (principal → role via `iam:PassRole`), `CAN_ASSUME` (role trust policy), `ESCALATES_VIA` (matched primitive — the catalogue's link to the graph).
 - *Inline policy expansion:* current enumerator lists inline policy *names* only; document expansion + statement-level matching land with the reachability edges.
 
-**Real-AWS execution evidence:** see attached run log [TODO: paste output of `python3 -m pathtriage.cli.main scan --provider aws` against account 559292738121 here].
+**Real-AWS execution evidence:** first run against account 559292738121 (2026-06-13T06:59:30Z):
+
+```
+=== PathTriage skeleton first real-AWS run ===
+Captured: 2026-06-13T06:59:30Z
+Account:  559292738121
+Region:   ap-southeast-2
+
+[*] enumerating AWS IAM (profile=None, region=ap-southeast-2)
+[+] graph: 7 nodes (3 policy, 2 role, 2 user), 3 edges
+[*] principals:
+    - [user] pathtriage-admin (1 policies)
+    - [user] pathtriage-low-priv-attacker (0 policies)
+    - [role] hello-world-web-role-3i04n9x7 (1 policies)
+    - [role] pathtriage-imds-instance-role (1 policies)
+```
+
+**Reading the result.** `pathtriage-low-priv-attacker` reports 0 attached/inline policies, which is correct for the post-Path-1/Path-3-destroy state — both scenarios' vulnerable policies were torn down after verification. `hello-world-web-role-3i04n9x7` is unrelated to PathTriage (carry-over from earlier AWS experimentation) and is a useful incidental confirmation that the enumerator catches environment noise that real deployments will always contain. The 3 customer-managed policies (local scope) and 3 `HAS_POLICY` edges are consistent with the principals present.
+
+This satisfies the W2 §6.4 success criterion that `pathtriage scan --provider aws` produces a non-empty graph against a real account.
 
 ---
 
