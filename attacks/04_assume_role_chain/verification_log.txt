@@ -1,0 +1,13 @@
+[*] acting as: arn:aws:iam::559292738121:user/pathtriage-low-priv-attacker
+[*] Step 1: baseline probe — low-priv user iam:CreateUser?
+    [+] iam:CreateUser denied (as expected)
+[*] Step 2: hop 1 — AssumeRole on R1 (arn:aws:iam::559292738121:role/pathtriage-assume-role-chain-r1)
+    [+] now: arn:aws:sts::559292738121:assumed-role/pathtriage-assume-role-chain-r1/pathtriage-path04-hop1
+[*] Step 3: intermediate probe — R1 iam:CreateUser?
+    [+] iam:CreateUser denied for R1 (intermediate, as expected)
+[*] Step 4: hop 2 — AssumeRole on R2 (arn:aws:iam::559292738121:role/pathtriage-assume-role-chain-r2)
+    [+] now: arn:aws:sts::559292738121:assumed-role/pathtriage-assume-role-chain-r2/pathtriage-path04-hop2
+[*] Step 5: final probe — R2 iam:CreateUser?
+    [+] iam:CreateUser SUCCEEDS as R2 — chain complete
+
+[+] Path 04 verified: low-priv user -> R1 -> R2 (effective admin)
