@@ -10,21 +10,24 @@ Master's research project conducted within the UNSW COMP9301 (Term 2 2026) and C
 
 ## Status
 
-🚧 **Work in progress — COMP9301 Week 2 (Term 2 2026)**
+🚧 **Work in progress — COMP9301 Week 3 (Term 2 2026)**
 
-- Verified attack paths: **3 / 8** target
+- Verified attack paths: **6 / 8** target (ahead of W4 milestone)
 - Tool skeleton: `pathtriage scan --provider aws` enumerates IAM and builds the initial attack graph
 
 ## Attack Path Catalogue
 
 | #  | Path | Provider | Mechanism | Status |
 |----|------|----------|-----------|--------|
-| 01 | [PassRole + RunInstances](attacks/01_passrole/)              | AWS | EC2 role-assumption via instance profile        | ✅ Verified |
-| 02 | [IMDS SSRF Credential Theft](attacks/02_imds_ssrf/)          | AWS | SSRF → IMDSv1 → role credential extraction      | ✅ Verified |
-| 03 | [CreatePolicyVersion Escalation](attacks/03_createpolicyversion/) | AWS | Self-attached customer-managed policy rewrite | ✅ Verified |
-| 04–08 | *in progress*                                             | AWS / Azure | —                                         | 🕒 Planned |
+| 01 | [PassRole + RunInstances](attacks/01_passrole/)                   | AWS | EC2 role-assumption via instance profile                 | ✅ Verified |
+| 02 | [IMDS SSRF Credential Theft](attacks/02_imds_ssrf/)               | AWS | SSRF → IMDSv1 → role credential extraction              | ✅ Verified |
+| 03 | [CreatePolicyVersion Escalation](attacks/03_createpolicyversion/) | AWS | Self-attached customer-managed policy rewrite            | ✅ Verified |
+| 04 | [AssumeRole Chain](attacks/04_assume_role_chain/)                 | AWS | Transitive trust topology: user → R1 → R2 (admin)        | ✅ Verified |
+| 05 | [AttachPolicy Escalation](attacks/05_attachpolicy/)               | AWS | Self-attach `AdministratorAccess` via `iam:AttachUserPolicy` | ✅ Verified |
+| 06 | [EC2 Instance Profile Abuse](attacks/06_instance_profile/)        | AWS | IMDS extraction from EC2 with admin role, used off-box   | ✅ Verified |
+| 07–08 | *in progress*                                                  | AWS | Lambda env-var theft · S3 credential harvest             | 🕒 Planned (W6–W7) |
 
-Each path includes a Terraform-deployed vulnerable lab, an end-to-end `exploit.py`, and a verification log. Defender output (detection queries + remediation policies) and exploitability scoring are designed cross-path in later weeks (W5 / W7) to capture convergence rather than duplicating per-path.
+Each path includes a Terraform-deployed vulnerable lab, an end-to-end `exploit.py`, and a verification log. Defender output (detection queries + remediation policies) and exploitability scoring are designed cross-path in later weeks (W5 / W7) to capture **convergence** rather than duplicating per-path — e.g. a single IMDS-extraction detection covers Paths 1, 2, and 6.
 
 ## Repository Structure
 
