@@ -53,22 +53,3 @@ The catalogue is structured around defender-relevant convergence points rather t
 
 Eight AWS paths × four detection primitives = **2:1 average convergence ratio**. Defender output and exploitability scoring are designed cross-path in W6 / W7, not duplicated per-path.
 
-## Roadmap
-
-- **W6–7**: AWS defender-output module · rubric calibration (single-rater, supervisor) · Z2–Z3
-- **W7–8**: Azure enumerator · Z4–Z5 · AWS enumerator extension
-- **W8**: Azure defender-output module · Z6–Z8 · prototype polish (CI, pytest ≥60%, HTML report)
-- **W9**: Technical Report + Technical Deliverable finalisation (self-imposed lock; official deadline W10)
-- **W10**: Final Presentation + Personal Reflection
-
-## Term 3 (COMP9302) Direction
-
-Term 3 pivots from horizontal cloud coverage to a deeper attack surface: **AI agents as first-class entry nodes in the IAM attack graph**. Bedrock Agents (AWS) and Azure OpenAI Assistants (Azure) hold IAM permissions but accept untrusted input via tool-calling, expanding the *authorisation surface* from "deployed code" to "any text the model processes". Term 3 will catalogue 6–8 agent IAM attack paths, formalise the MITRE ATLAS ↔ ATT&CK for Cloud bridge, and ship two practitioner artefacts — an Agent IAM Threat Modeling Playbook and a Least-Privilege Policy Recommender. GCP and other clouds are deliberately out of scope to preserve depth.
-
-## License
-
-[TBD — to be determined before public v0.1 release in W10]
-
----
-
-*PathTriage is the research project for COMP9301 / COMP9302 at UNSW Sydney (Term 2 / Term 3 2026), supervised by Lachlan Jones. Repository will be made public alongside the Technical Deliverable at the end of W10.
