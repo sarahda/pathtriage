@@ -1,0 +1,22 @@
+{
+  "status": "success",
+  "scenario": "Z2 - Service Principal credential theft via App Service app_settings",
+  "attck_id": "T1552.001",
+  "aws_analogue": "P7 (Lambda env-var theft)",
+  "initial_identity": "VM System-Assigned MI (Website Contributor on one Web App)",
+  "pivoted_to": "SP <ELEVATED_SP_CLIENT_ID> (Contributor at subscription scope)",
+  "evidence": {
+    "resources_enumerated": 8,
+    "resource_types": [
+      "Microsoft.Compute/disks",
+      "Microsoft.Compute/virtualMachines",
+      "Microsoft.Network/networkInterfaces",
+      "Microsoft.Network/networkSecurityGroups",
+      "Microsoft.Network/publicIPAddresses",
+      "Microsoft.Network/virtualNetworks",
+      "Microsoft.Web/serverFarms",
+      "Microsoft.Web/sites"
+    ],
+    "tag_written": "pathtriage-z2=owned"
+  }
+}

@@ -239,3 +239,11 @@ credentials
 .DS_Store
 # Sensitive raw logs (contain real subscription/tenant IDs)
 **/verification_log.raw.txt
+
+# Z1 sanitization pattern — raw logs with tenant/sub IDs
+attacks/**/verification_log.raw.txt
+.pathtriage-private/
+
+# Terraform plan files — may contain sensitive variable values in binary form
+*.plan
+*.tfplan
