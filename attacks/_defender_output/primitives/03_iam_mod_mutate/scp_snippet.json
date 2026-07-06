@@ -1,0 +1,44 @@
+{
+  "_comment": "PathTriage Primitive 03 — IAM modification (mutate) preventive SCP. Restricts CreatePolicyVersion and SetDefaultPolicyVersion to tag-authorized identities. Companion to the detection query in cloudtrail_lake_query.sql.",
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "DenyPolicyMutationByUnauthorizedIdentities",
+      "Effect": "Deny",
+      "Action": [
+        "iam:CreatePolicyVersion",
+        "iam:SetDefaultPolicyVersion",
+        "iam:DeletePolicyVersion"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "StringNotEqualsIfExists": {
+          "aws:PrincipalTag/iam-policy-mgmt-authorized": "true"
+        },
+        "ArnNotLike": {
+          "aws:PrincipalArn": [
+            "arn:aws:iam::*:role/OrganizationAccountAccessRole",
+            "arn:aws:iam::*:role/IAMPolicyAdmin*"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "DenyPolicyMutationOfAWSManaged",
+      "Effect": "Deny",
+      "Action": [
+        "iam:CreatePolicyVersion",
+        "iam:SetDefaultPolicyVersion"
+      ],
+      "Resource": "arn:aws:iam::aws:policy/*",
+      "_comment_on_this_statement": "AWS-managed policies cannot actually be modified — this statement is defense-in-depth. AWS blocks these operations service-side, but the SCP makes the denial explicit and auditable."
+    }
+  ],
+  "_notes": {
+    "coverage": "First statement enforces tag-based authorization for policy mutation. Only principals tagged 'iam-policy-mgmt-authorized=true' or matching approved role name patterns can perform CreatePolicyVersion / SetDefaultPolicyVersion.",
+    "content_limitation": "SCPs cannot inspect the policyDocument content of a CreatePolicyVersion call. An authorized policy manager can still inject wildcards into any customer-managed policy. This is the fundamental limitation of the preventive layer — content-level protection requires runtime detection (this primitive's SQL query) and manual review workflow.",
+    "asymmetry_with_azure": "Azure enforces a service-side privilege-escalation guard on the equivalent action (D-Z4-02): a principal cannot inject actions they do not themselves hold, regardless of whether they are tag-authorized. AWS has no such guard. Documented in azure_symmetry.md as a structural asymmetry contributing to thesis Section 4.",
+    "cross_version_gap": "Attackers can iteratively modify a policy across many version updates, each within their allowed action set, until the cumulative changes reach admin-equivalent. Detection primitive's baseline join captures this — each version's delta is scored — but SCP alone does not.",
+    "deployment": "Attach at the organisation root. Requires all legitimate policy-management identities to be tagged 'iam-policy-mgmt-authorized=true' before deployment. Combine with a separate policy review workflow (out of PathTriage scope) for the content-level check."
+  }
+}

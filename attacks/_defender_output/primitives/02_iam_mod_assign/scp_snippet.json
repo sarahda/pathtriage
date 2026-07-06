@@ -1,0 +1,58 @@
+{
+  "_comment": "PathTriage Primitive 02 — IAM modification (assign) preventive SCP. Denies self-attach of admin-equivalent policies. Companion to the detection query in cloudtrail_lake_query.sql.",
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "DenySelfAttachAdminPolicies",
+      "Effect": "Deny",
+      "Action": [
+        "iam:AttachUserPolicy",
+        "iam:AttachRolePolicy"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "ArnEquals": {
+          "iam:PolicyARN": [
+            "arn:aws:iam::aws:policy/AdministratorAccess",
+            "arn:aws:iam::aws:policy/IAMFullAccess",
+            "arn:aws:iam::aws:policy/PowerUserAccess"
+          ]
+        },
+        "StringEquals": {
+          "iam:UserName": "${aws:username}"
+        }
+      }
+    },
+    {
+      "Sid": "DenyPolicyModificationByLowPrivIdentities",
+      "Effect": "Deny",
+      "Action": [
+        "iam:AttachUserPolicy",
+        "iam:AttachRolePolicy",
+        "iam:AttachGroupPolicy",
+        "iam:PutUserPolicy",
+        "iam:PutRolePolicy",
+        "iam:PutGroupPolicy"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "StringNotEqualsIfExists": {
+          "aws:PrincipalTag/iam-mgmt-authorized": "true"
+        },
+        "ArnNotLike": {
+          "aws:PrincipalArn": [
+            "arn:aws:iam::*:role/OrganizationAccountAccessRole",
+            "arn:aws:iam::*:role/IAMAdmin*"
+          ]
+        }
+      }
+    }
+  ],
+  "_notes": {
+    "coverage": "First statement denies self-attach of the three most common admin-equivalent AWS-managed policies. Second statement enforces a positive tag-based control: only principals tagged 'iam-mgmt-authorized=true' or matching approved role name patterns can perform IAM assign actions.",
+    "self_attach_limitation": "The iam:UserName condition variable only matches for IAM users, not for assumed-role sessions. Self-attach via a role that assumes itself would bypass statement 1; the second statement (tag-based) covers this by requiring positive authorization for any IAM assignment.",
+    "inline_policy_gap": "SCPs cannot match inline policy content, so a caller with iam:PutUserPolicy could still self-assign an inline policy with wildcard actions. Detection primitive catches this at runtime.",
+    "cross_role_delegation": "An attacker with permission to assume role A could have A attach a policy to role B, bypassing the caller-target identity match in statement 1. Statement 2 (tag-based) blocks this if role A is not tag-authorized.",
+    "deployment": "Attach at the organisation root. Requires all legitimate IAM-management identities to be tagged 'iam-mgmt-authorized=true' before deployment (audit before enabling to avoid locking out ops teams)."
+  }
+}

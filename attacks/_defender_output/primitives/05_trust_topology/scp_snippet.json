@@ -1,0 +1,57 @@
+{
+  "_comment": "PathTriage Primitive 05 — Trust topology preventive SCP. Restricts sts:AssumeRole chain depth and enforces MFA on transitions to admin-tagged roles. Companion to the detection query in cloudtrail_lake_query.sql.",
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "DenyChainedAssumeRoleWithoutExplicitAllow",
+      "Effect": "Deny",
+      "Action": "sts:AssumeRole",
+      "Resource": "arn:aws:iam::*:role/*",
+      "Condition": {
+        "StringEquals": {
+          "aws:PrincipalType": "AssumedRole"
+        },
+        "StringNotEqualsIfExists": {
+          "aws:ResourceTag/chain-source-allowed": "true"
+        }
+      },
+      "_comment_on_this_statement": "Denies AssumeRole when the caller is already an assumed-role session, unless the target role is explicitly tagged as accepting chained access. This structurally limits transitive trust — legitimate chained access (e.g., CI/CD role → deploy role) requires positive tagging."
+    },
+    {
+      "Sid": "DenyAssumeAdminRoleWithoutMFA",
+      "Effect": "Deny",
+      "Action": "sts:AssumeRole",
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "aws:ResourceTag/privilege-tier": "admin"
+        },
+        "BoolIfExists": {
+          "aws:MultiFactorAuthPresent": "false"
+        }
+      }
+    },
+    {
+      "Sid": "DenyLongLivedAdminRoleSessions",
+      "Effect": "Deny",
+      "Action": "sts:AssumeRole",
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "aws:ResourceTag/privilege-tier": "admin"
+        },
+        "NumericGreaterThan": {
+          "sts:DurationSeconds": "3600"
+        }
+      }
+    }
+  ],
+  "_notes": {
+    "coverage": "First statement structurally limits chain depth by requiring positive tagging on chainable target roles. Second statement gates admin roles behind MFA. Third statement limits admin session lifetime to 1 hour, reducing the window in which chained access can be exploited.",
+    "tag_discipline_prerequisite": "Statements 1 and 2 require organisation-wide tag discipline: 'chain-source-allowed' on roles that accept chained access, and 'privilege-tier=admin' on all admin-equivalent roles. Deployment without complete tagging causes lockouts for legitimate operations.",
+    "mfa_limitation": "MFA condition (aws:MultiFactorAuthPresent) does not propagate through role-to-role AssumeRole. Legitimate service-to-service admin access (e.g., automated deploy pipelines) cannot present MFA. These flows require alternative authorization (session tags, source IP conditions, or dedicated automation roles exempt from statement 2). Not covered by this SCP; requires per-organisation policy design.",
+    "chain_depth_not_absolute": "Statement 1 limits chain depth to what tagging allows; it does not enforce a numerical maximum. An organisation with permissive tagging can still have long chains. Detection primitive is the runtime backstop.",
+    "session_lifetime_trade_off": "Statement 3's 1-hour cap protects against long-lived compromised admin sessions but forces re-authentication for interactive admin work. Increase to 4-8 hours for operator convenience if compromise risk is acceptable.",
+    "deployment": "Attach at organisation root. Requires (a) tag discipline (chain-source-allowed, privilege-tier), (b) MFA infrastructure, (c) documented exemption roles for automation. Roll out in audit mode first (report-only) for 2 weeks to catch legitimate flows that would break."
+  }
+}

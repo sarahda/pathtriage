@@ -1,0 +1,79 @@
+{
+  "_comment": "PathTriage Primitive 04 — Credential discovery preventive SCP. Blocks the write side (Lambda env-var containing IAM access key) and restricts the read side (S3 GetObject on credential-file patterns).",
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "DenyLambdaEnvVarContainingAccessKey",
+      "Effect": "Deny",
+      "Action": [
+        "lambda:CreateFunction",
+        "lambda:UpdateFunctionConfiguration"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "StringLike": {
+          "lambda:FunctionEnvironment": [
+            "*AKIA*",
+            "*aws_access_key*",
+            "*AWS_ACCESS_KEY*",
+            "*aws_secret*",
+            "*AWS_SECRET*"
+          ]
+        }
+      },
+      "_comment_on_this_statement": "lambda:FunctionEnvironment is a proposed condition key that inspects environment variable content. If not available in the target account, use SCPs at the account or organization boundary combined with detective control (this primitive) as compensating control."
+    },
+    {
+      "Sid": "DenyGetObjectOnCredentialFiles",
+      "Effect": "Deny",
+      "Action": "s3:GetObject",
+      "Resource": [
+        "arn:aws:s3:::*/*.tfstate",
+        "arn:aws:s3:::*/*.tfstate.*",
+        "arn:aws:s3:::*/.env",
+        "arn:aws:s3:::*/*.env",
+        "arn:aws:s3:::*/credentials",
+        "arn:aws:s3:::*/credentials.*",
+        "arn:aws:s3:::*/.aws/*",
+        "arn:aws:s3:::*/config.json"
+      ],
+      "Condition": {
+        "StringNotEqualsIfExists": {
+          "aws:PrincipalTag/credential-read-authorized": "true"
+        },
+        "ArnNotLike": {
+          "aws:PrincipalArn": [
+            "arn:aws:iam::*:role/terraform-*",
+            "arn:aws:iam::*:role/CredentialManagement*"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "RequireSSEForCredentialFiles",
+      "Effect": "Deny",
+      "Action": "s3:PutObject",
+      "Resource": [
+        "arn:aws:s3:::*/*.tfstate",
+        "arn:aws:s3:::*/*.env",
+        "arn:aws:s3:::*/credentials*"
+      ],
+      "Condition": {
+        "StringNotEquals": {
+          "s3:x-amz-server-side-encryption": [
+            "aws:kms",
+            "AES256"
+          ]
+        }
+      }
+    }
+  ],
+  "_notes": {
+    "coverage": "First statement blocks the WRITE side of P7 — attackers cannot create the misconfiguration in the first place. Existing exposed keys must be found and removed separately (out of scope; use `git-secrets`, `truffleHog`, or AWS Secrets Manager migration).",
+    "read_gate": "Second statement blocks the READ side of P8 — credential-file S3 objects can only be read by tagged identities. Terraform automation and credential-management roles are explicitly allow-listed.",
+    "encryption_gate": "Third statement requires server-side encryption on credential-file uploads. This does not prevent P8 directly (attacker with GetObject can decrypt via SSE-managed keys), but adds an audit trail (KMS grants + logs) that helps investigation and closes the SSE-S3-only case (unencrypted plaintext writes).",
+    "content_analysis_gap": "None of the SCPs inspect object content. An attacker who names their credential file 'notes.txt' evades the pattern-based deny. Detection primitive catches these by monitoring for the read + off-band use correlation, which is content-agnostic.",
+    "residual_risk": "Attackers with tag-authorization or in an allow-listed role (e.g., legitimate CI/CD service) can still leak credentials. Detection is the compensating control.",
+    "deployment": "Attach at organisation root. Requires tag-based access control (aws:PrincipalTag/credential-read-authorized) to be established across the organisation before deployment; audit for false-lockouts before enforcing."
+  }
+}
