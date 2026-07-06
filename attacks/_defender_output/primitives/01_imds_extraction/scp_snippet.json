@@ -1,0 +1,48 @@
+{
+  "_comment": "PathTriage Primitive 01 — IMDS extraction preventive SCP. Enforces IMDSv2 organisation-wide by denying IMDSv1 access. Companion to the detection query in cloudtrail_lake_query.sql.",
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "DenyIMDSv1RunInstances",
+      "Effect": "Deny",
+      "Action": "ec2:RunInstances",
+      "Resource": "arn:aws:ec2:*:*:instance/*",
+      "Condition": {
+        "StringNotEquals": {
+          "ec2:MetadataHttpTokens": "required"
+        }
+      }
+    },
+    {
+      "Sid": "DenyIMDSv1ModifyInstanceMetadataOptions",
+      "Effect": "Deny",
+      "Action": "ec2:ModifyInstanceMetadataOptions",
+      "Resource": "arn:aws:ec2:*:*:instance/*",
+      "Condition": {
+        "StringNotEquals": {
+          "ec2:MetadataHttpTokens": "required"
+        }
+      }
+    },
+    {
+      "Sid": "RequireIMDSv2HopLimitBounded",
+      "Effect": "Deny",
+      "Action": [
+        "ec2:RunInstances",
+        "ec2:ModifyInstanceMetadataOptions"
+      ],
+      "Resource": "arn:aws:ec2:*:*:instance/*",
+      "Condition": {
+        "NumericGreaterThan": {
+          "ec2:MetadataHttpPutResponseHopLimit": "2"
+        }
+      }
+    }
+  ],
+  "_notes": {
+    "coverage": "Prevents IMDSv1 use at instance-launch and instance-modification time. Existing instances with IMDSv1 enabled remain vulnerable until re-launched or explicitly reconfigured; the ModifyInstanceMetadataOptions deny covers the reconfiguration path.",
+    "hop_limit_rationale": "Hop limit ≤ 2 prevents containerised SSRF from reaching IMDS across container-to-host network boundary. Combined with IMDSv2's token exchange, this closes the SSRF-to-credential path (P2) at the network layer.",
+    "residual_risk": "SCP does not prevent P1 (PassRole+RunInstances) or P6 (Instance Profile Abuse) — both attacks assume the attacker can reach IMDS legitimately (P1 as the instance launcher, P6 as an on-instance attacker). Detection primitive is required for these paths.",
+    "deployment": "Attach at the organisation root or applicable OUs. Test in a non-production OU first — existing workloads relying on IMDSv1 will fail after deployment."
+  }
+}
