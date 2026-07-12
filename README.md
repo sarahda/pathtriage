@@ -8,7 +8,7 @@ Exploitability-ranked IAM attack-path discovery and defender-output synthesis fo
 
 - **Midway report submitted** — verified catalogue, rubric v1, prototype design (June 2026)
 - **AWS arm complete** — 8 / 8 paths verified end-to-end ✅
-- **Azure arm in progress** — **4 / 8 paths verified** (Z1–Z4); Z5–Z8 in pipeline
+- **Azure arm in progress** — **6 / 8 paths verified** (Z1–Z4); Z5–Z8 in pipeline
 - **Tool skeleton**: `pathtriage scan --provider aws` enumerates IAM and builds the initial attack graph (Azure enumerator in progress)
 - **Defender-output module**: methodology skeleton committed (`attacks/_defender_output/`); primitive build in progress
 
@@ -27,7 +27,7 @@ Exploitability-ranked IAM attack-path discovery and defender-output synthesis fo
 | 07 | Lambda Env-Var Credential Theft | Long-term IAM keys leaked via Lambda env vars | ✅ Verified |
 | 08 | S3 Credential Harvest | Long-term IAM keys leaked via bucket objects (`.tfstate`, `.env`) | ✅ Verified |
 
-### Azure (4 / 8 verified)
+### Azure (6 / 8 verified)
 
 | # | Path | Mechanism | Status |
 |---|------|-----------|--------|
@@ -35,8 +35,8 @@ Exploitability-ranked IAM attack-path discovery and defender-output synthesis fo
 | Z2 | Service Principal Credential Theft | SP `clientSecret` leaked in App Service `app_settings`; MI reads via `Website Contributor` → OAuth2 `client_credentials` → subscription Contributor | ✅ Verified |
 | Z3 | Role Assignment Manipulation | `Microsoft.Authorization/roleAssignments/write` (via UAA) → self-grant Owner on RG | ✅ Verified |
 | Z4 | Custom Role Definition Abuse | `Microsoft.Authorization/roleDefinitions/write` (via Owner) → inject wildcard `*` into custom role `actions[]`, retroactive elevation of all assignees | ✅ Verified |
-| Z5 | Key Vault Secret Escalation | Key Vault RBAC / access policy → read secrets → reuse | 🚧 In progress |
-| Z6 | Storage Account Key Abuse | `listKeys` → `.tfstate` / connection strings | 🚧 In progress |
+| Z5 | Key Vault Secret Escalation | MI reads SP secret from Key Vault via RBAC (Secrets User) → OAuth2 client_credentials → subscription Contributor | ✅ Verified |
+| Z6 | Storage Account Key Abuse | MI listKeys → account key → SharedKey blob GET (bypasses AAD) → parse tfstate → embedded SP creds → subscription Contributor | ✅ Verified |
 | Z7 | Managed Identity / SP Chain | MI/SP assigns role to / impersonates 2nd identity | 🚧 In progress |
 | Z8 | VM Run Command Abuse | `virtualMachines/runCommand/action` → exec as MI | 🚧 In progress |
 

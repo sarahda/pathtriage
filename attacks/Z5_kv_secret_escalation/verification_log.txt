@@ -1,0 +1,54 @@
+[*] target VM:                <VM_PUBLIC_IP>
+[*] foothold:                 VM System-Assigned MI on Key Vault '<KEY_VAULT_NAME>'
+[*] MI principalId:           <MI_PRINCIPAL_ID>
+[*] MI RBAC:                  Key Vault Secrets User (data plane, read-only)
+[*] target Key Vault URI:     https://<KEY_VAULT_NAME>.vault.azure.net/
+[*] target secret:            pt-z5-elevated-sp-secret
+[*] target RG:                pathtriage-rg
+[*] acting from the VM itself (no external attacker host required)
+[*] started at:               2026-07-12T10:32:46.024986+00:00
+
+[*] Step 1: query IMDS for MI token (ARM-scoped)
+[+] MI ARM token acquired
+    token length:             2055 chars
+    resource:                 https://management.azure.com/
+
+[*] Step 2: query IMDS for MI token (Key Vault-scoped)
+[+] MI KV token acquired
+    token length:             1808 chars
+    resource:                 https://vault.azure.net
+
+[*] Step 3: GET secret 'pt-z5-elevated-sp-secret' from Key Vault
+[+] secret retrieved
+    secret id:                https://<KEY_VAULT_NAME>.vault.azure.net/secrets/pt-z5-elevated-sp-secret/fa7a493ac72a42ad83644ad3e677a109
+    content type:             application/json
+    value length:             40 chars
+    (value not printed — treated as sensitive credential)
+
+[*] Step 4: obtain SP application (client) ID
+    (In production: appId is typically stored in tags, environment
+     variables, or discovered via KV-Reader on the same vault.
+     Here we read it from the Terraform output that the attacker
+     would have discovered via reconnaissance.)
+[+] SP app_id obtained
+    app_id:                   <ELEVATED_SP_APP_ID>
+
+[*] Step 5: exchange SP credentials for ARM token (OAuth2 client_credentials)
+[+] SP ARM token acquired
+    token type:               Bearer
+    expires in:               3599 seconds
+    token length:             1840 chars
+    resource:                 https://management.azure.com/
+
+[*] Step 6: PATCH tag on RG using SP token (write proof)
+    baseline: VM MI held only Key Vault Secrets User on ONE vault.
+    if this write succeeds, it's via SP scope (Contributor at sub level).
+[+] tag write succeeded
+    tag:                      pathtriage-z5=owned
+    api-version:              2021-04-01  (operation=Merge required)
+
+[+] Path Z5 verified: VM MI (Key Vault Secrets User on 1 KV) ->
+                      GET secret 'pt-z5-elevated-sp-secret' ->
+                      OAuth2 client_credentials with SP creds ->
+                      SP token (Contributor at subscription scope) ->
+                      RG-wide control-plane writes succeed
