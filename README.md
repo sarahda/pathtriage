@@ -8,7 +8,7 @@ Exploitability-ranked IAM attack-path discovery and defender-output synthesis fo
 
 - **Midway report submitted** — verified catalogue, rubric v1, prototype design (June 2026)
 - **AWS arm complete** — 8 / 8 paths verified end-to-end ✅
-- **Azure arm in progress** — **6 / 8 paths verified** (Z1–Z4); Z5–Z8 in pipeline
+- **Azure arm in progress** — **7 / 8 paths verified** (Z1–Z4); Z5–Z8 in pipeline
 - **Tool skeleton**: `pathtriage scan --provider aws` enumerates IAM and builds the initial attack graph (Azure enumerator in progress)
 - **Defender-output module**: methodology skeleton committed (`attacks/_defender_output/`); primitive build in progress
 

