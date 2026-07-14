@@ -2,98 +2,111 @@
 
 ## Purpose
 
-Sanity check that primitive 03's detection concept is expressible in Azure, and document the **primary structural asymmetry** between AWS and Azure IAM: Azure enforces a service-side privilege-escalation guard on the mutate primitive that AWS does not have. This asymmetry is the material contribution of the Z4 verification (D-Z4-02) to the AWS-Azure comparative analysis in thesis §4.
+Sanity check that primitive 03's detection concept is expressible in Azure. Confirms cross-cloud validity without duplicating W8 Azure-KQL implementation. **This primitive has the strongest AWS↔Azure asymmetry finding in the catalogue** (D-Z4-02), documented in detail below.
 
 ## Signal Correspondence
 
-The AWS primitive detects: **modification of an existing IAM policy where the new version grants actions the prior version did not, and the modification is activated**.
+The AWS primitive detects: **policy version creation + set-as-default correlation with elevated content vs prior version, correlated with prior attachment or subsequent use by the caller**.
 
-The Azure equivalent detects: **modification of an existing role definition where the new `actions[]` array grants actions the prior definition did not**.
+The Azure equivalent detects (structurally): **role definition modification with expanded action list vs prior version, correlated with the caller's use of the modified role**.
 
 Cloud-invariant primitive structure:
-
-```
-Policy/role-definition version modification event
-    → caller writes a new version of an existing policy/role
-    → observed in control-plane logs (CloudTrail / Activity Log)
-    → correlated with prior version content (version-content baseline join)
-    → fires on:
-        - new admin actions present AND absent in prior
-        - and (self-benefit OR mass-attachment OR persistent activation)
-```
+Policy/role mutation event
+→ observed in control-plane logs
+→ compared against prior policy/role content
+→ correlated with caller's attachment/assignment history
+→ fires on elevation-of-actions with matching before/after diff
 
 ## Azure paths covered
 
-- **Z4** — Custom role definition abuse: caller (Owner) injects `"*"` into a custom role's `actions[]`. Direct analogue of P3.
+- **Z4** — Custom role definition abuse via `Microsoft.Authorization/roleDefinitions/write`
 
-Not covered: Z3 (assign — covered by primitive 02).
+Single path in the primitive, but the finding it produces (D-Z4-02) is the most significant comparative asymmetry in the module.
 
 ## AWS log surface → Azure log surface mapping
 
-| AWS field | Azure equivalent | Notes |
-|---|---|---|
-| CloudTrail `eventName = CreatePolicyVersion` | AzureActivity `OperationName = Microsoft.Authorization/roleDefinitions/write` | Direct equivalent |
-| CloudTrail `requestParameters.policyArn` | AzureActivity request body `properties.roleName` + resource ID | Role definition identity |
-| CloudTrail `requestParameters.policyDocument` | AzureActivity request body `properties.permissions[0].actions` | The new content to be validated |
-| Prior version fetched from earlier CloudTrail events | Prior version fetched from earlier AzureActivity events | Same baseline structure |
-| CloudTrail `SetDefaultPolicyVersion` separate event | Azure combines create + activate in one operation | Simpler on Azure — no correlation-window logic needed |
-| Attach relationship (from AttachPolicy events) | Role assignment relationship (from roleAssignments/write events) | Both surfaces support attachment-count baseline |
+| AWS field | Azure equivalent |
+|---|---|
+| `eventName = CreatePolicyVersion` | `Microsoft.Authorization/roleDefinitions/write` (PUT) |
+| `eventName = SetDefaultPolicyVersion` | (Not applicable — Azure has no version history model; role definitions are mutated in-place with implicit "current version" only) |
+| `requestParameters.policyArn` | `properties.roleName` + resource ID of the roleDefinition |
+| `requestParameters.policyDocument` (new content) | Request body `properties.permissions.actions[]` — the mutated action list |
+| Prior version fetched via `GetPolicyVersion` | Prior state must be reconstructed from Activity Log's historical `roleDefinitions/write` events (Azure does not preserve immutable version history) |
+| Correlation with caller's attachment history | Correlation with the calling principal's role assignments on that role |
 
-The mapping is one-to-one for the fields. The main structural simplification on Azure is that role definition mutation is atomic — no separate "activate" event is needed, since the write immediately becomes effective (subject to the privilege-escalation guard, below). Azure's counterpart of primitive 03 does not need the `activated_creates` CTE.
+## Asymmetries
 
-## THE ASYMMETRY: Azure's undocumented privilege-escalation guard
+### Asymmetry 1 — Azure has no policy version history ⭐
 
-**AWS**: any principal with `iam:CreatePolicyVersion` can inject `"Action": "*"` into a policy. The IAM service does not check whether the calling principal itself has the actions being written. The mutation persists. This is verifiable — see attack P3's verification log for a low-privileged user mutating a customer policy to grant themselves `*`.
+**AWS iam:CreatePolicyVersion** creates a NEW version that lives alongside old versions. Old versions remain accessible for rollback and forensic comparison. Detection can fetch the immediately-prior version from IAM directly and compute a diff — the "elevated content vs prior" signal is straightforward.
 
-**Azure**: Azure RBAC enforces a service-side privilege-escalation guard at the `Microsoft.Authorization` resource provider. A principal that does not already hold action A cannot inject A into any role definition's `actions[]`. The `PUT roleDefinitions/{id}` API call returns 200 OK with the echoed body, but a backend validator within seconds reverts the persisted state to the previous version. Verified experimentally during Z4 build (`attacks/Z4_custom_role_definition_abuse/README.md` D-Z4-02):
+**Azure roleDefinitions/write** mutates the role in-place. Previous state is not preserved in Azure Resource Manager. Detection queries must reconstruct the prior state from Activity Log's historical events — expensive query, and older mutations may age out of retention.
 
-| Starting role | `PUT` HTTP code | `GET` after 5s | Downstream write via mutated role |
-|---|---|---|---|
-| `User Access Administrator` (holds `Microsoft.Authorization/*/write` but not `*`) | 200 OK | actions reverted to read-only | 403 AuthorizationFailed |
-| `Owner` (holds `*`) | 200 OK | actions persist as `["*"]` | Succeeds |
+**Detection implication**: Azure detection queries for primitive 03 are strictly more expensive than AWS. They must join current-state (from ARM API) against historical Activity Log events to reconstruct prior state. This affects query performance and log retention requirements.
 
-This behaviour is **not documented in Microsoft's public RBAC reference**. It was discovered by experimental verification during Z4 catalogue build.
+### Asymmetry 2 — Azure has service-side privilege-escalation guard (D-Z4-02) ⭐⭐
 
-## Detection implications of the asymmetry
+**This is the primary primitive-03 comparative finding.** Documented in detail as D-Z4-02.
 
-The Azure counterpart of primitive 03 gains a **verification signal** that the AWS primitive does not have:
+The finding: Azure RBAC enforces an **undocumented** service-side privilege-escalation guard on `roleDefinitions/write`. A principal cannot inject actions into a role definition that the principal does not itself already hold, regardless of whether they hold the `roleDefinitions/write` action.
 
-- Azure fire condition: `roleDefinitions/write` succeeds AND a follow-up `GET` within 10 seconds shows the mutation persisted. If the mutation was silently reverted, no elevation occurred; the event is not an actionable fire.
-- AWS has no such gate. Every syntactically-valid `CreatePolicyVersion` results in a persisted change; detection must fire on all of them and rely on downstream context for confidence.
+Evidence: two-run experimental comparison with identical infrastructure. When calling principal is `User Access Administrator` (which holds `Microsoft.Authorization/*/write` but not the wildcard `*`), the mutation succeeds silently at PUT with HTTP 200 OK, but a follow-up GET five seconds later shows the mutation has been reverted. Attacker's downstream use of the "mutated" role fails with 403. When calling principal is `Owner` (which holds `*`), the mutation persists and downstream use succeeds.
 
-The consequence: **the Azure primitive has structurally lower FP rate than the AWS primitive**. Fires that Azure silently blocks are not surfaced to the defender; the AWS defender sees them all.
+**Structural consequence**: Azure structurally prevents privilege escalation via mutate primitive for principals below Owner scope. AWS provides no equivalent guard on `iam:CreatePolicyVersion` — any principal with that action can inject any actions. So:
 
-## Comparative summary
+- **AWS provides only reactive detection** for the mutate primitive.
+- **Azure provides structural prevention on top of detection** for principals below Owner.
 
-| Dimension | AWS P3 | Azure Z4 |
-|---|---|---|
-| Cloud-side privilege-escalation prevention | None | Yes (D-Z4-02) |
-| Required starting authority | Any principal with `iam:CreatePolicyVersion` on the policy | The caller must already hold the actions being written |
-| Persistence semantics | Always persists | Persists only if guard passes |
-| Detection role | Reactive only (fire on all) | Reactive + verification (fire only on persisted) |
-| Effective attacker surface | Broad | Narrow (Owner-equivalent required) |
-| Best defensive posture | Detection + preventive tag-based SCP (partial) | Detection is enough; guard closes the primitive for non-Owner attackers |
+**Detection implication**: Azure primitive 03 detection is materially less critical than AWS primitive 03 detection. Azure's built-in guard eliminates a whole class of attackers (UAA-scoped principals). Detection is still needed for Owner-scoped principals, but the attacker surface is narrower.
 
-## Contribution to thesis §4
+**Verification note**: this finding was made experimentally during Z4 lab construction, not from Microsoft documentation. It is not documented in Microsoft Learn, MSRC blog, SpecterOps writeups, NetSPI research, or public GitHub searches. It is inferable via experimental verification (reproducible in five minutes) but not stated in any reference. Documented as an experimentally-observed, undocumented Azure RBAC behavior.
 
-The asymmetry documented here is the **most concrete comparative-analysis contribution** in PathTriage. It is:
+**Impact on catalogue framing**: Z4 must model the calling principal as Owner to be verifiable at all. This narrows the realistic attacker surface for Z4 compared to AWS P3 (any principal with `iam:CreatePolicyVersion`). Documented explicitly in Z4 README.
 
-1. **Structural**, not implementation-specific — it reflects a design decision in Azure RBAC that has been in place since at least 2020.
-2. **Undocumented** in Microsoft's public references — the guard's existence is inferable from experimental behaviour but not stated.
-3. **Materially affects the detection story** — Azure's primitive has strictly lower FP rate on this attack class.
-4. **Verifiable end-to-end** — the Z4 attack lab includes the two-run comparison (UAA vs Owner) in `verification_log.txt`.
+### Asymmetry 3 — Azure MI tokens don't reflect post-mutation permissions (D-Z4-03)
 
-For thesis §4, the argument is: "AWS and Azure have converged on similar named actions (`iam:CreatePolicyVersion` vs `Microsoft.Authorization/roleDefinitions/write`) with similar-looking privilege primitives. But Azure has added a service-side guard AWS does not have, materially changing the detection story. This structural difference is undocumented but experimentally verifiable, and it is the kind of asymmetry that a purely permission-model analysis (e.g., IAM policy simulator, Azure Policy analysis) would miss."
+Azure MI tokens carry permission claims at issuance time. If a role is mutated via `roleDefinitions/write` after a token is issued, the change does not propagate to that in-flight token — a fresh IMDS token acquisition is required to see the new permissions.
 
-The contribution is not a criticism of AWS or an endorsement of Azure — both approaches are defensible design choices. The contribution is naming the asymmetry and quantifying its detection implication.
+AWS STS credentials propagate IAM changes near-immediately (typically <30 seconds). An in-flight STS credential set will start reflecting the new permissions without re-authentication.
+
+**Detection implication**: Azure primitive 03 has a specific signature — the same-MI sequence `roleDefinitions/write` → fresh IMDS token acquisition → subsequent write via mutated role. All three events are visible in Activity Log; the correlation is high-confidence. This detection signal has no direct AWS analogue because AWS doesn't require the token refresh step.
+
+### Asymmetry 4 — Elevation-target specificity
+
+AWS `iam:CreatePolicyVersion` allows arbitrary policy content — attackers can inject any actions, any resources, any conditions. The mutated policy is fully attacker-controlled.
+
+Azure `roleDefinitions/write` mutates a specific existing role definition. The attacker can only inject actions that would extend the role's scope. The mutation is constrained by the role's assignable scopes and by D-Z4-02's guard.
+
+**Detection implication**: Azure detection can compare the mutated role against a fixed set of well-known "safe" custom role patterns. AWS detection has a broader search space — any policy document is possible content.
+
+### Asymmetry 5 — Preventive control availability
+
+AWS has SCP-based preventive controls: deny `iam:CreatePolicyVersion` on admin-equivalent policies, tag-based restrictions, etc. These are user-configurable SCPs.
+
+Azure has D-Z4-02's built-in guard (below-Owner cannot inject actions they don't hold), plus role-based access control on `roleDefinitions/write` itself. Custom-deny policies via Azure Policy exist but are less expressive than AWS SCPs at the identity level.
+
+**Detection implication**: Azure preventive-control layer is stronger by default (D-Z4-02), but user-configurable preventive controls are weaker than AWS SCPs. Overall balance: Azure primitive 03 has stronger built-in prevention but weaker custom prevention; AWS has weaker built-in prevention but stronger custom prevention.
 
 ## Design implications for W8 Azure primitive
 
 The W8 Azure counterpart of primitive 03 will:
 
-1. Reuse the version-delta baseline structure.
-2. Add a **post-write verification** step: after `roleDefinitions/write` succeeds, wait 10s and GET the role definition. Compare the persisted content against the request body. Only fire if the mutation persisted.
-3. Note in operator documentation that Azure's guard eliminates a large class of naive fires; alert routing can be more aggressive than on AWS.
-4. Document D-Z4-02 in the Azure primitive's `README.md` (post-W8) as the primary detection-quality difference from the AWS primitive.
+1. Reference Azure Activity Log for `roleDefinitions/write` events (the mutation events themselves).
+2. Reconstruct prior state via historical Activity Log query — expensive but necessary given Azure's lack of version history.
+3. Compare pre-mutation and post-mutation action lists — flag any elevation-of-actions.
+4. Correlate the mutation event with the calling principal's role assignments on that role (does the mutator hold or benefit from the mutation?).
+5. **Include D-Z4-02 preflight**: check whether the calling principal already holds the injected actions. If they do (Owner-scoped), fire high-confidence. If they don't (UAA-scoped), the mutation would be reverted by Azure's guard — fire as informational only (still logged, but not alertable).
+6. Include the D-Z4-03 signature — sequence of mutate → fresh IMDS → subsequent write via mutated role. This is the highest-confidence variant.
 
-Primitive 03's design is validated as cloud-invariant in structure, but the asymmetry in the underlying privilege model is material and is the primary contribution point for thesis §4.
+Primitive 03's design is validated as **cloud-invariant in structure but with strongly asymmetric prevention**. The AWS and Azure detection queries have similar shape (mutation + baseline diff + caller history). But the preventive-control layer differs materially, which affects the primitive's real-world value. AWS defenders must rely primarily on detection; Azure defenders benefit from Azure's built-in guard for below-Owner attackers.
+
+The D-Z4-02 finding is the primary primitive-03 contribution to thesis Section 4 comparative analysis. It represents a case where Azure provides structural prevention that AWS delegates to reactive detection — a specific, actionable multi-cloud IAM design insight, not a general "AWS and Azure differ" statement.
+
+## Coverage matrix (updated for verified paths)
+
+| Path | Attacker requirement | Detection value | Preventive layer |
+|---|---|---|---|
+| P3 (AWS) | `iam:CreatePolicyVersion` on any admin-equivalent policy | High — attacker fully controls policy content | User-configurable SCPs only |
+| Z4 (Azure) | `roleDefinitions/write` **AND** already-Owner scope (per D-Z4-02) | Lower — Azure's guard filters below-Owner attackers automatically | Built-in D-Z4-02 guard + user-configurable Azure Policy |
+
+Coverage asymmetry: The Z4 attacker surface is narrower than P3 due to Azure's structural guard. Detection is therefore less critical on Azure but still needed for Owner-scoped compromise. This is the clearest example in the catalogue of a case where Azure's identity platform design provides defense-in-depth that AWS delegates to reactive detection.

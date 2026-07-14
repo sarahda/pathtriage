@@ -6,84 +6,120 @@ Sanity check that primitive 04's detection concept is expressible in Azure. Conf
 
 ## Signal Correspondence
 
-The AWS primitive detects: **read of a credential-bearing surface followed within a correlation window by first use of a new access key ID by a different principal sharing source IP or user-agent with the reader**.
+The AWS primitive detects: **credential-bearing surface read followed by first-use of a novel access key by a different principal within a correlation window**.
 
-The Azure equivalent detects: **read of a credential-bearing surface followed within a correlation window by first use of a new service principal or a new MI-scoped token by a different caller sharing IP or UA with the reader**.
+The Azure equivalent detects: **secret-bearing surface read followed by first-use of a Service Principal token acquired via the leaked secret**.
 
 Cloud-invariant primitive structure:
-
-```
-Credential storage surface read
-    → observed in control-plane logs
-    → correlated with subsequent auth event using previously-unseen credentials
-    → attribution join via shared IP or user-agent
-    → fires on read-use correspondence
-```
+Credential-bearing surface read event
+ → observed in control-plane or data-plane logs
+→ correlated with subsequent token acquisition
+→ correlated with subsequent write action by that token
+→ fires when the credential first-use is by a different principal
+sharing network/UA characteristics
 
 ## Azure paths covered
 
-- **Z2** — Service Principal credential theft (App Service app_settings). Direct analogue of P7. Verified.
-- **Z5** — Key Vault secret escalation. Similar structure: read secret via `secrets/read` action, subsequently use secret as auth credential. Not yet verified (W6-W7 planned).
-- **Z6** — Storage account key abuse. Direct analogue of P8: `listKeys` to a storage account, then use the returned key for storage-plane access. Not yet verified.
+Three verified Azure paths exercise this primitive across distinct discovery surfaces. This is the primitive with the highest per-primitive path density in the catalogue.
+
+- **Z2** — Service Principal secret leaked in App Service `app_settings`
+- **Z5** — Service Principal secret stored in Key Vault
+- **Z6** — Service Principal credentials embedded in Terraform state blob (via Storage Account key extraction)
+
+Each exercises the same primitive class but through a fundamentally different discovery surface, which shapes both the detection query and the preventive control.
+
+## Discovery surface comparison across all 5 paths
+
+| Path | Surface | Retrieval Mechanism | Storage class |
+|---|---|---|---|
+| P7 (AWS) | Lambda env vars | `lambda:GetFunctionConfiguration` | Configuration metadata |
+| P8 (AWS) | S3 object (credential file) | `s3:GetObject` on `.env`/`.tfstate` patterns | Unintended (DevOps leak) |
+| Z2 (Azure) | App Service `app_settings` | `sites/config/list` via `Website Contributor` | Configuration metadata |
+| Z5 (Azure) | Key Vault secret | `secrets/get` via `Key Vault Secrets User` | **Intended** secret storage |
+| Z6 (Azure) | Storage Account blob (tfstate) | `listKeys` → SharedKey → blob GET | Unintended (DevOps leak) |
+
+Two dimensions of variation matter for detection:
+
+1. **Intended vs unintended storage**. Z5 exploits credentials in the *right* place (Key Vault is Microsoft's recommended secret storage). Z2/Z6/P7/P8 exploit credentials in the *wrong* place. Detection heuristics differ: Z5 requires baseline reasoning about who *should* read which vault; Z2/Z6/P7/P8 can use content-pattern detection at storage time.
+2. **Auth path for retrieval**. Z6 uniquely bypasses AAD/RBAC via shared-key authentication after retrieving the account key. This is a structural weakness AWS S3 does not have. Documented in Asymmetry 4 below.
 
 ## AWS log surface → Azure log surface mapping
 
-| AWS field | Azure equivalent | Notes |
-|---|---|---|
-| CloudTrail `eventName = GetFunctionConfiguration` | AzureActivity `OperationName = Microsoft.Web/sites/config/list/action` | Z2 App Service equivalent |
-| CloudTrail `eventName = GetObject` on credential-file pattern | AzureActivity `OperationName = Microsoft.KeyVault/vaults/secrets/getSecret/action` | Z5 Key Vault equivalent |
-| N/A | AzureActivity `OperationName = Microsoft.Storage/storageAccounts/listKeys/action` | Z6 Storage key equivalent; no direct AWS analogue for the listKeys pattern |
-| CloudTrail `userIdentity.accessKeyId` | AAD SignInLogs `AppId` (for SP) or Activity Log `Caller` (for MI) | Same identity-tracking role |
-| CloudTrail `sourceIPAddress` | AAD SignInLogs `IPAddress` | Direct equivalent |
-| CloudTrail read+use correlation | AAD SignInLogs first-seen of AppId immediately after Key Vault read | Same correlation structure |
-
-The correlation structure is identical: read → correlate with new-credential use → fire. Azure has an additional advantage: AAD SignInLogs surface the SP's `AppId` on every use, making credential-tracking cleaner than AWS's access-key-ID model.
+| AWS field | Azure equivalent (Z2) | Azure equivalent (Z5) | Azure equivalent (Z6) |
+|---|---|---|---|
+| `eventName = GetFunctionConfiguration` | `Microsoft.Web/sites/config/list` action | `Microsoft.KeyVault/vaults/secrets/get` (data plane) | `Microsoft.Storage/storageAccounts/listkeys/action` + subsequent `SharedKey` blob GET |
+| `eventName = GetObject` (credential-file pattern) | (analogous — `sites/config` returns app_settings blob) | (retrieved via KV data plane API) | Storage diagnostic: `GET` blob with `AuthenticationType = "AccountKey"` |
+| Content pattern in response (e.g. `AWS_SECRET`) | `application_id` + `client_secret` keys in JSON response | Secret metadata + value in response | JSON structure with `azuread_application.attributes.client_secret` |
+| First-use event: `sts:GetCallerIdentity` with novel key ID | AAD SignInLogs `NonInteractiveUserSignIn` with new `AppId` | AAD SignInLogs `NonInteractiveUserSignIn` with SP's `AppId` | Same as Z2/Z5 — AAD SignInLogs |
+| Correlation dimension: IP + UA + time window | Correlation dimension: `CallerIpAddress` + `UserAgent` + AAD `CorrelationId` window | Correlation across two log sources: KV diagnostic + AAD SignInLogs | Correlation across three log sources: Activity Log + storage diagnostic + AAD SignInLogs |
 
 ## Asymmetries
 
-### Asymmetry 1 — Credential lifetime differences
+### Asymmetry 1 — Surface diversity (Azure exercises 3, AWS exercises 2)
 
-AWS long-term IAM access keys have **infinite lifetime** unless rotated (default rotation is not enforced organisation-wide). Once leaked, the same key is used until deactivated. Primitive 04's "new access key ID" detection depends on the key being previously unseen — which is true because the attacker's use is the first CloudTrail visibility of the key.
+AWS has 2 credential-discovery paths in the catalogue (P7, P8) — Lambda env-var + S3 object. Azure has 3 paths (Z2, Z5, Z6) across three distinct storage classes: App Service config, Key Vault, Storage Account blob.
 
-Azure Service Principal secrets have **default 2-year lifetime**, but MI tokens are 24-hour-lived and re-issued. A leaked SP secret produces a specific `AppId` in AAD SignInLogs on every use — identity tracking is cleaner than tracking access-key IDs across CloudTrail history.
+**Detection implication**: the Azure counterpart of this primitive splits into three query variants at implementation time. Each variant handles a different combination of read event source + credential first-use correlation. A defender treating all three as "the same" (as AWS does with P7/P8) will miss surface-specific patterns.
 
-**Detection implication**: Azure detection has a cleaner attribution model. AWS detection is precise (access keys are identity-scoped) but requires more complex first-seen logic across a longer history window.
+### Asymmetry 2 — Intended vs unintended storage semantics
 
-### Asymmetry 2 — Credential storage surface breadth
+Z5 exploits credentials in Key Vault, which is Microsoft's *recommended* storage location for secrets. Read events on Key Vault are baseline-normal traffic (production apps read secrets constantly). Detection cannot rely on "reading a secret is suspicious" — it must reason about *who* should read *which* vault.
 
-AWS has a small, standardised set of credential storage surfaces (Lambda env vars, S3 objects, EC2 user-data). Primitive 04's surface enumeration is nearly complete for AWS.
+AWS has no equivalent problem for P7/P8 because Lambda env-vars and S3 objects are *not* recommended storage for credentials — reads on credential-shaped content in those surfaces are already anomalous by policy.
 
-Azure has many more storage surfaces:
+**Detection implication**: Z5's baseline join is strictly harder than P7/P8's. Requires principal-vault-secret 3-tuple history, not just principal-file history. Documented in `paths.md` §Z5.
 
-- App Service `app_settings` (Z2, verified)
-- Function App configuration
-- Key Vault secrets (Z5, planned)
-- Storage account keys (Z6, planned)
-- Automation Account variables
-- Logic App workflow parameters
-- DevOps pipeline variables
-- Configuration Manager parameter store equivalents
-- Container Instance environment variables
-- Managed application parameters
+### Asymmetry 3 — Data-plane log defaults
 
-**Detection implication**: Azure primitive 04 requires broader surface coverage. The Z5/Z6 addition to the Azure catalogue extends surface coverage in the correct direction. Full parity with Azure's actual surface breadth is out of scope for the T2 catalogue.
+Azure data-plane logs (Key Vault `AuditEvent` diagnostic, Storage `StorageRead` diagnostic) are **off by default**. Detection primitives referencing these surfaces silently fail on unconfigured storage accounts and vaults — an operator who has "detection primitive 04 deployed" may still be blind to Z5/Z6.
 
-### Asymmetry 3 — Access log granularity
+AWS CloudTrail captures the equivalent events (Lambda GetFunctionConfiguration, S3 GetObject with data events enabled) by default (though S3 data events also require explicit enablement, that's a well-known gap).
 
-AWS CloudTrail records the credential-bearing surface's read event (`GetFunctionConfiguration`, `GetObject`) but does not natively track *which* environment variables were retrieved (the entire config is returned as one blob). Detection relies on assuming any read of a credential-storing surface potentially leaked all its credentials.
+**Detection implication**: the Azure counterpart of primitive 04 must include a preflight check — "is diagnostic logging enabled on this KV / SA?" — before it can operate at all. This is a preventive-control gap, not a detection query gap, but it affects the primitive's real-world reliability.
 
-Azure Key Vault logs record **which specific secret was retrieved** (`SecretName` field in AzureActivity). Detection can be much more targeted — only reads of secrets tagged as "credential-type" fire.
+### Asymmetry 4 — Storage Account shared-key bypass (D-Z6-01) ⭐
 
-**Detection implication**: Azure has a more precise detection model for Key Vault (Z5) than AWS has for its equivalent Secrets Manager. AWS's less-granular logging means primitive 04 must accept some FP on legitimate config reads.
+Z6's discovery mechanism has **no AWS analogue**.
+
+- On AWS, S3 access always requires IAM authentication. The identity behind an `s3:GetObject` call is always visible in CloudTrail with a resolved principal ARN.
+- On Azure, Storage Account access can use shared-key authentication (legacy compatibility). Once an identity retrieves an account key via `listKeys` (control plane), all subsequent blob operations authenticate as `AuthenticationType = "AccountKey"` — bypassing AAD, RBAC, and the identity resolution that AWS enforces.
+
+This has three concrete detection consequences:
+
+1. **RBAC audits miss the risk**. The `Storage Account Key Operator Service Role` grants only `listKeys` / `regenerateKey` actions — no data-plane RBAC. An identity with only this role appears "control-plane only, safe from data-plane concerns" in any static RBAC audit. But it holds full data-plane authority via the retrieved key. Documented as D-Z6-01.
+2. **Two-log-source correlation required**. Detection needs both Activity Log (`listKeys` event) AND storage diagnostic (`SharedKey` blob access) correlated by IP/time to identify the specific caller. Neither log alone is sufficient.
+3. **Diagnostic-off invisibility**. Storage diagnostic logs are off by default (see Asymmetry 3). Environments without this enabled have no visibility into SharedKey-authenticated blob access at all.
+
+AWS's S3 architecture, which never supported shared-key auth, avoids this entire class of detection difficulty. This is documented as a comparative finding for thesis Section 4.
+
+### Asymmetry 5 — First-use identity resolution
+
+AWS: the first-use of a leaked access key is a `sts:GetCallerIdentity` or any AWS API call with the specific `AccessKeyId`. The key ID is a persistent, resolvable identifier — you can pattern-match on it directly.
+
+Azure: the first-use of a leaked SP credential is an AAD SignInLog `NonInteractiveUserSignIn` event with the SP's `AppId`. But SP tokens are short-lived; each token acquisition is a separate SignIn event. Correlation across the leak event and the sign-in event uses `CorrelationId` (per-request) or `AppId` (per-SP identity).
+
+**Detection implication**: AWS detection can key on access key ID persistence — the same ID appearing in a leak event and a use event is a strong signal. Azure detection has no equivalent stable identifier at the token level; must key on `AppId` + temporal correlation with the leak event, which produces more false positives (an SP might legitimately sign in shortly after any config read).
 
 ## Design implications for W8 Azure primitive
 
 The W8 Azure counterpart of primitive 04 will:
 
-1. Reuse the read-plus-use correlation structure.
-2. Use `AppId` (for SP) or `Caller` object ID (for MI) as the new-credential-tracker instead of AWS access-key-ID.
-3. Include broader surface coverage: App Service (Z2), Function App, Key Vault (Z5), Storage account keys (Z6), Automation Accounts. Full breadth may require multiple queries or a UNION.
-4. Leverage Key Vault's per-secret granularity for cleaner Z5 detection.
-5. Note in operator documentation that Azure's per-secret logging provides better precision than AWS's per-config-blob logging.
+1. **Split into three query variants** — one per surface (App Service config, Key Vault, Storage Account). Each variant references its specific event source and correlation window.
+2. **Include a preflight check** — verify diagnostic logging is enabled on the relevant KV/SA before running the query. Emit a warning otherwise.
+3. **Use `CorrelationId` + `AppId` for cross-log join** — not access-key-style persistent ID matching.
+4. **Include Z6-specific dual-log correlation** — Activity Log `listKeys` events must be joined with storage diagnostic SharedKey blob GETs.
+5. **Reference the primitive's Azure asymmetry catalogue** — three variants + D-Z6-01 finding + diagnostic-off preflight — as the primary structural argument that "same primitive, different implementation."
 
-Primitive 04's design is cloud-invariant in structure. Azure gains cleaner attribution (AppId) and better precision on Key Vault surfaces; AWS has better surface enumeration (fewer surfaces to cover).
+Primitive 04's design is validated as **partially cloud-invariant**. The high-level structure (credential-bearing read + correlated first-use) translates. The specific query, log source composition, and preventive control set are strictly cloud-specific and differ substantially between AWS and Azure.
+
+## Coverage matrix (updated for verified paths)
+
+| Path | Primary detection query type | Data-plane logging default | Baseline complexity |
+|---|---|---|---|
+| P7 | CloudTrail — GetFunctionConfiguration + STS first-use | On (CloudTrail default) | Low (principal-file history) |
+| P8 | CloudTrail — GetObject with credential-file pattern | On (CloudTrail default, S3 data events explicit) | Low-Medium |
+| Z2 | Activity Log — sites/config/list + AAD SignIn correlation | On (Activity Log default) | Medium (principal-webapp history) |
+| Z5 | KV diagnostic — secrets/get + AAD SignIn correlation | **Off by default** | High (principal-vault-secret 3-tuple history) |
+| Z6 | Activity Log — listKeys + storage diagnostic SharedKey GET + AAD SignIn | **Off by default (both storage diagnostic + Activity Log for the correlation)** | High + bypasses AAD identity resolution |
+
+Complexity trend: Azure paths (Z2, Z5, Z6) generally require more baseline dimensions and more log sources than AWS paths (P7, P8) for equivalent detection confidence. This is a consistent pattern across the primitive.
