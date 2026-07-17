@@ -1,0 +1,216 @@
+{
+  "corpus": {
+    "baseline_events": 700000,
+    "attack_events": 23,
+    "eval_window": [
+      "TIMESTAMP '2026-07-06 22:00:00'",
+      "TIMESTAMP '2026-07-07 22:00:00'"
+    ]
+  },
+  "per_primitive": {
+    "01": {
+      "primitive": "01",
+      "covered_paths": [
+        "P1",
+        "P2",
+        "P6"
+      ],
+      "total_fires": 8,
+      "tp": 8,
+      "fp": 0,
+      "fn": 1,
+      "precision": 1.0,
+      "event_recall": 0.8888888888888888,
+      "f1": 0.9411764705882353,
+      "attacks_detected": 3,
+      "attacks_covered": 3,
+      "attack_level_recall": 1.0,
+      "mttd_per_attack": {
+        "P1": 45.0,
+        "P2": 0.0,
+        "P6": 0.0
+      },
+      "mttd_mean_sec": 15.0,
+      "tp_events": [
+        {
+          "event_id": "c083eb8c-b37f-0a72-e9d3-4119f3374ceb",
+          "attack_id": "P6"
+        },
+        {
+          "event_id": "cd3ada8b-4f22-22d3-b41a-3dbd199b364f",
+          "attack_id": "P6"
+        },
+        {
+          "event_id": "667a4084-4853-040b-7a05-814d32feb3e7",
+          "attack_id": "P6"
+        },
+        {
+          "event_id": "2da86a78-c49e-a20e-3268-4b27b95e9093",
+          "attack_id": "P2"
+        },
+        {
+          "event_id": "853964b5-0af0-3b97-1722-f244f58d669c",
+          "attack_id": "P1"
+        }
+      ],
+      "fp_events": [],
+      "fn_events": [
+        "3c8eb5bb-6825-75ec-87a1-71ac826a6fce"
+      ]
+    },
+    "02": {
+      "primitive": "02",
+      "covered_paths": [
+        "P5"
+      ],
+      "total_fires": 1,
+      "tp": 1,
+      "fp": 0,
+      "fn": 1,
+      "precision": 1.0,
+      "event_recall": 0.5,
+      "f1": 0.6666666666666666,
+      "attacks_detected": 1,
+      "attacks_covered": 1,
+      "attack_level_recall": 1.0,
+      "mttd_per_attack": {
+        "P5": 12.0
+      },
+      "mttd_mean_sec": 12.0,
+      "tp_events": [
+        {
+          "event_id": "80e952eb-9d8e-96cf-37cb-990c801f97b7",
+          "attack_id": "P5"
+        }
+      ],
+      "fp_events": [],
+      "fn_events": [
+        "d1afcc4f-14a3-e3e0-4d42-f8ac2acaf127"
+      ]
+    },
+    "03": {
+      "primitive": "03",
+      "covered_paths": [
+        "P3"
+      ],
+      "total_fires": 1,
+      "tp": 1,
+      "fp": 0,
+      "fn": 2,
+      "precision": 1.0,
+      "event_recall": 0.3333333333333333,
+      "f1": 0.5,
+      "attacks_detected": 1,
+      "attacks_covered": 1,
+      "attack_level_recall": 1.0,
+      "mttd_per_attack": {
+        "P3": 10.0
+      },
+      "mttd_mean_sec": 10.0,
+      "tp_events": [
+        {
+          "event_id": "4e518ca6-eaac-8d82-f01b-7210760474f3",
+          "attack_id": "P3"
+        }
+      ],
+      "fp_events": [],
+      "fn_events": [
+        "4d58fed8-a728-e7ec-a0fa-5f6b8a880627",
+        "eaede5fe-878f-78e2-978a-a2447c462dda"
+      ]
+    },
+    "04": {
+      "primitive": "04",
+      "covered_paths": [
+        "P7",
+        "P8"
+      ],
+      "total_fires": 4,
+      "tp": 4,
+      "fp": 0,
+      "fn": 2,
+      "precision": 1.0,
+      "event_recall": 0.6666666666666666,
+      "f1": 0.8,
+      "attacks_detected": 2,
+      "attacks_covered": 2,
+      "attack_level_recall": 1.0,
+      "mttd_per_attack": {
+        "P7": 8.0,
+        "P8": 10.0
+      },
+      "mttd_mean_sec": 9.0,
+      "tp_events": [
+        {
+          "event_id": "9317de23-f074-9d0b-7d52-b20cf1cb80b2",
+          "attack_id": "P8"
+        },
+        {
+          "event_id": "37dc2c9a-7a52-36bb-4734-865425feeaa4",
+          "attack_id": "P7"
+        },
+        {
+          "event_id": "83bdceca-5ffb-82d2-d59a-32a99ed5ebe1",
+          "attack_id": "P8"
+        },
+        {
+          "event_id": "17ee5bb9-cda1-a2a3-c984-a24b9c429ca4",
+          "attack_id": "P7"
+        }
+      ],
+      "fp_events": [],
+      "fn_events": [
+        "e779f6be-e9cd-5648-1fb3-39258e4d27eb",
+        "a2145128-edfe-d863-bd39-f917c1069648"
+      ]
+    },
+    "05": {
+      "primitive": "05",
+      "covered_paths": [
+        "P4"
+      ],
+      "total_fires": 2,
+      "tp": 2,
+      "fp": 0,
+      "fn": 1,
+      "precision": 1.0,
+      "event_recall": 0.6666666666666666,
+      "f1": 0.8,
+      "attacks_detected": 1,
+      "attacks_covered": 1,
+      "attack_level_recall": 1.0,
+      "mttd_per_attack": {
+        "P4": 0.0
+      },
+      "mttd_mean_sec": 0.0,
+      "tp_events": [
+        {
+          "event_id": "1799e278-6d37-4842-1599-e3e9c8fe21da",
+          "attack_id": "P4"
+        },
+        {
+          "event_id": "893697b5-9048-1194-f309-ffea518f32cf",
+          "attack_id": "P4"
+        }
+      ],
+      "fp_events": [],
+      "fn_events": [
+        "a3c0ed16-bfe1-6849-ef30-7590d273e34f"
+      ]
+    }
+  },
+  "aggregate": {
+    "macro_precision": 1.0,
+    "macro_event_recall": 0.611111111111111,
+    "macro_attack_recall": 1.0,
+    "macro_f1": 0.7415686274509804,
+    "macro_mttd_sec": 9.2,
+    "paths_detected": 8,
+    "paths_covered": 8
+  },
+  "coverage_gate": {
+    "all_precision_ge_0.95": true,
+    "all_attack_recall_1.0": true,
+    "median_mttd_le_60": true
+  }
+}
