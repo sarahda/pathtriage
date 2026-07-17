@@ -1,0 +1,3 @@
+corpora/*.jsonl
+corpora/*.jsonl.gz
+!corpora/.gitkeep
