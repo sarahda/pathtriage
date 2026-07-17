@@ -1,0 +1,66 @@
+{
+  "_comment": "Sample inventory demonstrating rank differentiation on rubric v1. Includes: (a) a low-priv attacker with self-mutation customer policies (structural approximation of P3/P5), and (b) a compromised app-user with direct AdministratorAccess (extreme case showing top-tier rank).",
+  "policies": {
+    "arn:aws:iam::aws:policy/AdministratorAccess": "AdministratorAccess",
+    "arn:aws:iam::aws:policy/IAMFullAccess": "IAMFullAccess",
+    "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess": "AmazonS3ReadOnlyAccess",
+    "arn:aws:iam::111111111111:policy/pathtriage-self-mut-policy": "pathtriage-self-mut-policy",
+    "arn:aws:iam::111111111111:policy/passrole-vulnerable": "passrole-vulnerable",
+    "arn:aws:iam::111111111111:policy/attachpolicy-vulnerable": "attachpolicy-vulnerable"
+  },
+  "users": [
+    {
+      "name": "pathtriage-low-priv-attacker",
+      "arn": "arn:aws:iam::111111111111:user/pathtriage-low-priv-attacker",
+      "attached_policy_arns": [
+        "arn:aws:iam::111111111111:policy/passrole-vulnerable",
+        "arn:aws:iam::111111111111:policy/attachpolicy-vulnerable",
+        "arn:aws:iam::111111111111:policy/pathtriage-self-mut-policy",
+        "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
+      ],
+      "inline_policy_names": []
+    },
+    {
+      "name": "app-readonly-user",
+      "arn": "arn:aws:iam::111111111111:user/app-readonly-user",
+      "attached_policy_arns": [
+        "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
+      ],
+      "inline_policy_names": []
+    },
+    {
+      "name": "compromised-devops-admin",
+      "arn": "arn:aws:iam::111111111111:user/compromised-devops-admin",
+      "attached_policy_arns": [
+        "arn:aws:iam::aws:policy/AdministratorAccess"
+      ],
+      "inline_policy_names": []
+    },
+    {
+      "name": "ci-service-user",
+      "arn": "arn:aws:iam::111111111111:user/ci-service-user",
+      "attached_policy_arns": [
+        "arn:aws:iam::aws:policy/IAMFullAccess"
+      ],
+      "inline_policy_names": []
+    }
+  ],
+  "roles": [
+    {
+      "name": "pathtriage-passrole-admin",
+      "arn": "arn:aws:iam::111111111111:role/pathtriage-passrole-admin",
+      "attached_policy_arns": [
+        "arn:aws:iam::aws:policy/AdministratorAccess"
+      ],
+      "inline_policy_names": []
+    },
+    {
+      "name": "app-worker-role",
+      "arn": "arn:aws:iam::111111111111:role/app-worker-role",
+      "attached_policy_arns": [
+        "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
+      ],
+      "inline_policy_names": []
+    }
+  ]
+}
