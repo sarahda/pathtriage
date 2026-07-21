@@ -50,7 +50,7 @@ Domain: [1.0, 5.0]. Weights sum to 1.0.
 | W_DELTA (delta_p) | 0.30 | Consequence severity — a trivial path to admin is worse than a hard path to lateral |
 | W_DET (d_det) | 0.20 | Detection difficulty matters but is subordinate to feasibility + severity |
 
-These weights are prior beliefs. Calibration against Lachlan Jones's independent path ranking (W8, 16 paths, Spearman rho >= 0.75 threshold) will either confirm or refine them. If refinement is required, weights are re-fit via ordinary least squares against the supervisor's rank order and re-committed as v1.1.
+These weights are prior beliefs. Calibration against an independent path ranking by a domain expert (16 paths, Spearman rho >= 0.75 threshold) will either confirm or refine them. If refinement is required, weights are re-fit via ordinary least squares against the supervisor's rank order and re-committed as v1.1.
 
 ## Not in scope for v1
 
