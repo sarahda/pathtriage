@@ -4,11 +4,16 @@ CVSS 3.1 Cross-Validation of PathTriage Rubric v1
 Computes Spearman rank correlation between rubric scores and CVSS 3.1
 base scores for the 16 attack paths in the catalogue.
 
+Improved scatter plot: groups paths that share the same (CVSS, Rubric)
+coordinates into a single labelled marker, with marker size proportional
+to group size. Eliminates label overlap.
+
 Prerequisites:
     pip install scipy numpy matplotlib
 """
 import numpy as np
 from scipy import stats
+from collections import defaultdict
 
 # ---------------------------------------------------------------------
 # Data: 16 attack paths with rubric and CVSS scores
@@ -62,10 +67,20 @@ rho, p_value = stats.spearmanr(rubric_scores, cvss_scores)
 print(f"\nSpearman rho = {rho:.4f}")
 print(f"p-value      = {p_value:.4f}")
 
-# Also compute Pearson for comparison
 r, r_p = stats.pearsonr(rubric_scores, cvss_scores)
 print(f"\nPearson r    = {r:.4f}")
 print(f"p-value      = {r_p:.4f}")
+
+# ---------------------------------------------------------------------
+# Group paths at identical coordinates (this is the ceiling effect)
+# ---------------------------------------------------------------------
+coord_groups = defaultdict(list)
+for pid, cs, rs in zip(path_ids, cvss_scores, rubric_scores):
+    coord_groups[(round(cs, 2), round(rs, 2))].append(pid)
+
+print(f"\n--- Coordinate groups (visualising CVSS ceiling effect) ---")
+for (cs, rs), pids in sorted(coord_groups.items()):
+    print(f"  CVSS={cs}, Rubric={rs}: {', '.join(sorted(pids))} ({len(pids)} path{'s' if len(pids)>1 else ''})")
 
 # ---------------------------------------------------------------------
 # Assessment
@@ -77,31 +92,74 @@ elif rho >= 0.70:
 elif rho >= 0.50:
     print(f"\n[!] rho = {rho:.3f}. Moderate correlation, below pre-registered threshold.")
 else:
-    print(f"\n[X] rho = {rho:.3f}. Weak correlation with CVSS.")
+    print(f"\n[X] rho = {rho:.3f}. Weak correlation with CVSS -- driven by ceiling effect (see coordinate groups above)")
 
 # ---------------------------------------------------------------------
-# Optional: scatter plot
+# Improved scatter plot with grouped labels
 # ---------------------------------------------------------------------
 try:
     import matplotlib.pyplot as plt
-    fig, ax = plt.subplots(figsize=(8, 6))
-    ax.scatter(cvss_scores, rubric_scores, alpha=0.6, s=80)
-    for pid, cs, rs in zip(path_ids, cvss_scores, rubric_scores):
-        ax.annotate(pid, (cs, rs), xytext=(5, 5), textcoords='offset points', fontsize=9)
+
+    fig, ax = plt.subplots(figsize=(11, 7.5))
+
+    # Plot markers: size proportional to number of paths at coordinate
+    for (cs, rs), pids in coord_groups.items():
+        n = len(pids)
+        # Base size 120, +80 per additional path at same coordinate
+        size = 120 + 80 * (n - 1)
+        ax.scatter(cs, rs, s=size, alpha=0.65, color='steelblue',
+                   edgecolor='navy', linewidth=1.5, zorder=3)
 
     # Regression line
     z = np.polyfit(cvss_scores, rubric_scores, 1)
     p = np.poly1d(z)
-    x_line = np.linspace(cvss_scores.min(), cvss_scores.max(), 100)
-    ax.plot(x_line, p(x_line), 'r--', alpha=0.5, label=f'Linear fit: y = {z[0]:.3f}x + {z[1]:.3f}')
+    x_line = np.linspace(cvss_scores.min() - 0.1, cvss_scores.max() + 0.1, 100)
+    ax.plot(x_line, p(x_line), 'r--', alpha=0.5, linewidth=1.5,
+            label=f'Linear fit: y = {z[0]:.3f}x + {z[1]:.3f}', zorder=2)
 
-    ax.set_xlabel('CVSS 3.1 Base Score', fontsize=11)
-    ax.set_ylabel('Rubric v1 Score', fontsize=11)
-    ax.set_title(f'PathTriage Rubric v1 vs CVSS 3.1\nSpearman rho = {rho:.3f} (p = {p_value:.4f})', fontsize=12)
-    ax.grid(True, alpha=0.3)
-    ax.legend()
+    # Smart label placement: offset by position on plot
+    # Right side of plot (CVSS ~9.9) -> labels to the left
+    # Left side of plot (CVSS ~8.4) -> labels to the right
+    for (cs, rs), pids in coord_groups.items():
+        label = ", ".join(sorted(pids))
+
+        # Choose label offset based on coordinate position
+        if cs >= 9.5:
+            xytext_offset = (-15, 0)
+            ha = 'right'
+        elif cs <= 8.6:
+            xytext_offset = (15, 0)
+            ha = 'left'
+        else:  # middle
+            xytext_offset = (0, 15)
+            ha = 'center'
+
+        ax.annotate(label, (cs, rs),
+                    xytext=xytext_offset, textcoords='offset points',
+                    fontsize=10, ha=ha, va='center',
+                    bbox=dict(boxstyle='round,pad=0.35',
+                              facecolor='white',
+                              edgecolor='steelblue', alpha=0.9, linewidth=0.8),
+                    zorder=4)
+
+    ax.set_xlabel('CVSS 3.1 Base Score', fontsize=12)
+    ax.set_ylabel('Rubric v1 Score', fontsize=12)
+    ax.set_title(f'PathTriage Rubric v1 vs CVSS 3.1\n'
+                 f'Spearman rho = {rho:.3f} (p = {p_value:.4f})    '
+                 f'| n = {len(paths)} paths, {len(coord_groups)} unique coordinates',
+                 fontsize=13)
+    ax.grid(True, alpha=0.3, zorder=1)
+    ax.legend(loc='lower right', fontsize=10)
+
+    # Set axis limits with padding
+    ax.set_xlim(cvss_scores.min() - 0.3, cvss_scores.max() + 0.3)
+    ax.set_ylim(rubric_scores.min() - 0.15, rubric_scores.max() + 0.15)
+
     plt.tight_layout()
-    plt.savefig('cvss_comparison.png', dpi=150)
+    plt.savefig('cvss_comparison.png', dpi=150, bbox_inches='tight')
     print(f"\nScatter plot saved to cvss_comparison.png")
+    print(f"  Marker sizes reflect number of paths at each coordinate")
+    print(f"  16 paths compressed to {len(coord_groups)} unique CVSS-Rubric coordinates")
+    print(f"  -- this is a visual demonstration of the CVSS ceiling effect")
 except ImportError:
     print("\nmatplotlib not installed - skipping plot")

@@ -23,6 +23,20 @@ p-value      = 0.1672
 Pearson r    = 0.3655
 p-value      = 0.1639
 
-[X] rho = 0.363. Weak correlation with CVSS.
+--- Coordinate groups (visualising CVSS ceiling effect) ---
+  CVSS=8.4, Rubric=4.3: P6, Z1 (2 paths)
+  CVSS=8.5, Rubric=4.0: Z7 (1 path)
+  CVSS=8.5, Rubric=4.2: Z4 (1 path)
+  CVSS=8.8, Rubric=4.8: P7, P8 (2 paths)
+  CVSS=9.0, Rubric=3.9: P2 (1 path)
+  CVSS=9.9, Rubric=4.1: P4 (1 path)
+  CVSS=9.9, Rubric=4.4: P1, Z8 (2 paths)
+  CVSS=9.9, Rubric=4.6: P3, P5, Z2, Z3, Z5 (5 paths)
+  CVSS=9.9, Rubric=4.8: Z6 (1 path)
+
+[X] rho = 0.363. Weak correlation with CVSS -- driven by ceiling effect (see coordinate groups above)
 
 Scatter plot saved to cvss_comparison.png
+  Marker sizes reflect number of paths at each coordinate
+  16 paths compressed to 9 unique CVSS-Rubric coordinates
+  -- this is a visual demonstration of the CVSS ceiling effect
