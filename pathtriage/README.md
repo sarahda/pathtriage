@@ -4,6 +4,7 @@ The `pathtriage` Python package implements the CLI (`scan`, `discover`, `rank`,
 `detail`) that operates on the IAM attack graph.
 
 ## Layout
+```
 pathtriage/
 ├── cli/main.py           argparse dispatcher for the four commands
 ├── enumerators/
@@ -15,7 +16,8 @@ pathtriage/
 │   ├── rubric.py         v1 rubric implementation
 │   └── rubric_v1_spec.md v1 weights + calibration status
 └── fixtures/
-└── aws_catalogue_sample.json  demo inventory modelling 3/8 verified paths
+    └── aws_catalogue_sample.json  demo inventory modelling 3/8 verified paths
+```
 
 ## Usage — live AWS
 
