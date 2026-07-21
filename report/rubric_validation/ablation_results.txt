@@ -1,0 +1,70 @@
+============================================================
+Rubric v1 baseline scores
+============================================================
+Path | Score | Rank
+-------------------------
+  Z6 | 4.80  |   1
+  P8 | 4.80  |   2
+  P7 | 4.80  |   3
+  Z5 | 4.60  |   4
+  Z3 | 4.60  |   5
+  Z2 | 4.60  |   6
+  P5 | 4.60  |   7
+  P3 | 4.60  |   8
+  Z8 | 4.40  |   9
+  P1 | 4.40  |  10
+  Z1 | 4.30  |  11
+  P6 | 4.30  |  12
+  Z4 | 4.20  |  13
+  P4 | 4.10  |  14
+  Z7 | 4.00  |  15
+  P2 | 3.90  |  16
+
+============================================================
+EXPERIMENT A: Fixed weight variants vs v1
+============================================================
+
+Variant                  | rho vs v1  | Top-5 same  
+----------------------------------------------------
+v1 (chosen)              | 1.000      | 100%        
+Uniform                  | 0.985      | 100%        
+Executability-heavy      | 0.985      | 100%        
+Detection-heavy          | 0.430      | 60%         
+Chain-length-heavy       | 0.960      | 100%        
+
+============================================================
+EXPERIMENT B: Bootstrap perturbation (n=1000, epsilon=+-0.10)
+============================================================
+
+Mean Kendall tau     = 0.9712
+Std Kendall tau      = 0.0416
+Min Kendall tau      = 0.8286
+Mean Spearman rho    = 0.9920
+Top-5 preserved:       1000/1000 (100.0%)
+
+Per-path score std (from perturbation):
+  P1: mean=4.400, std=0.099, CV=0.022
+  P2: mean=3.898, std=0.099, CV=0.025
+  P3: mean=4.599, std=0.102, CV=0.022
+  P4: mean=4.099, std=0.085, CV=0.021
+  P5: mean=4.599, std=0.102, CV=0.022
+  P6: mean=4.298, std=0.051, CV=0.012
+  P7: mean=4.800, std=0.051, CV=0.011
+  P8: mean=4.800, std=0.051, CV=0.011
+  Z1: mean=4.298, std=0.051, CV=0.012
+  Z2: mean=4.599, std=0.102, CV=0.022
+  Z3: mean=4.599, std=0.102, CV=0.022
+  Z4: mean=4.195, std=0.099, CV=0.024
+  Z5: mean=4.599, std=0.102, CV=0.022
+  Z6: mean=4.800, std=0.051, CV=0.011
+  Z7: mean=3.996, std=0.084, CV=0.021
+  Z8: mean=4.400, std=0.099, CV=0.022
+
+============================================================
+VALIDATION CRITERIA ASSESSMENT
+============================================================
+1. Mean Kendall tau >= 0.80: 0.971  [OK]
+2. Top-5 preserved >= 80%:  100.0%  [OK]
+3. All variants rho >= 0.85: [X] (min = 0.430)
+
+Plots saved to ablation_analysis.png
