@@ -202,6 +202,24 @@ The IAM user being deleted automatically invalidates the long-term access
 key extracted during the exploit; this is the lab's "credential invalidation"
 mechanism and is reliable. There is no out-of-band cleanup as in Path 05.
 
+## Detection
+
+This path is covered by defender-output primitive **04 — Credential Discovery**.
+
+Detection focuses on: **credential-bearing surface read + subsequent first-use**.
+
+See `attacks/_defender_output/primitives/04_credential_discovery/` for:
+
+- **README.md** — detection rationale and query semantics
+- **cloudtrail_lake_query.sql** — the AWS detection query (baseline-aware SQL over CloudTrail Lake)
+- **scp_snippet.json** — preventive control (SCP-based restriction)
+- **paths.md** — per-path signature details (search for `07` for this path's specific detection signature)
+- **adversarial_evasion.md** — documented evasion strategies and their residual detection
+- **azure_symmetry.md** — AWS↔Azure signal correspondence (the Azure counterpart query design)
+- **evaluation.md** — evaluation results
+
+Coverage in the five comparison baseline tools (Cloudsplaining, Prowler, Datadog CloudSIEM, Sigma HQ, CIS AWS Foundations v3.0) is documented in `attacks/_defender_output/methodology/related_work.md`.
+
 ## References
 
 - Rhino Security Labs — [Lambda Privilege Escalation methods](https://rhinosecuritylabs.com/aws/aws-privilege-escalation-methods-mitigation/)

@@ -1,0 +1,19 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.11.7, pytest-7.4.0, pluggy-1.0.0 -- /opt/anaconda3/bin/python
+cachedir: .pytest_cache
+rootdir: /Users/moonhyeon/Documents/UNSW Term2/Comp9301/pathtriage
+plugins: anyio-4.2.0
+collecting ... collected 10 items
+
+tests/test_discovery.py::test_discover_reaches_direct_and_transitive_targets PASSED [ 10%]
+tests/test_discovery.py::test_discover_captures_hop_counts PASSED        [ 20%]
+tests/test_discovery.py::test_discover_ignores_non_user_starts_by_default PASSED [ 30%]
+tests/test_discovery.py::test_attack_path_edge_types_property PASSED     [ 40%]
+tests/test_fixture.py::test_load_fixture_produces_populated_inventory PASSED [ 50%]
+tests/test_fixture.py::test_load_catalogue_fixture_end_to_end PASSED     [ 60%]
+tests/test_rubric.py::test_weights_sum_to_one PASSED                     [ 70%]
+tests/test_rubric.py::test_admin_path_scores_higher_than_readonly PASSED [ 80%]
+tests/test_rubric.py::test_shorter_path_scores_higher_ceteris_paribus PASSED [ 90%]
+tests/test_rubric.py::test_rank_paths_returns_descending_order PASSED    [100%]
+
+============================== 10 passed in 0.69s ==============================

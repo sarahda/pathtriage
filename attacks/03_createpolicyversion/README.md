@@ -120,7 +120,7 @@ network position and **no** second hop, so it should rank high on ease.
 - [x] Terraform vulnerable environment
 - [x] PoC script (`exploit.py`)
 - [x] Verification log (`verification_log.txt`)
-- [ ] Defender output (deferred to W7)
+- [x] Defender output (deferred to W7)
 - [ ] Exploitability score (deferred to W5)
 
 ## Cleanup
@@ -130,6 +130,24 @@ cd environments/scenarios/03_createpolicyversion && terraform destroy
 # If the PoC left extra policy versions, terraform destroy still removes the
 # whole policy; no manual version cleanup needed.
 ```
+
+## Detection
+
+This path is covered by defender-output primitive **03 — IAM Modification (Mutate)**.
+
+Detection focuses on: **policy mutation + prior-state diff + caller elevation**.
+
+See `attacks/_defender_output/primitives/03_iam_mod_mutate/` for:
+
+- **README.md** — detection rationale and query semantics
+- **cloudtrail_lake_query.sql** — the AWS detection query (baseline-aware SQL over CloudTrail Lake)
+- **scp_snippet.json** — preventive control (SCP-based restriction)
+- **paths.md** — per-path signature details (search for `03` for this path's specific detection signature)
+- **adversarial_evasion.md** — documented evasion strategies and their residual detection
+- **azure_symmetry.md** — AWS↔Azure signal correspondence (the Azure counterpart query design)
+- **evaluation.md** — evaluation results
+
+Coverage in the five comparison baseline tools (Cloudsplaining, Prowler, Datadog CloudSIEM, Sigma HQ, CIS AWS Foundations v3.0) is documented in `attacks/_defender_output/methodology/related_work.md`.
 
 ## References
 

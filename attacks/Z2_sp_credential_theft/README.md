@@ -204,6 +204,24 @@ unset TF_VAR_elevated_sp_client_id TF_VAR_elevated_sp_client_secret \
 
 Keep `baseline_azure_personal` running for Z3-Z8.
 
+## Detection
+
+This path is covered by defender-output primitive **04 — Credential Discovery**.
+
+Detection focuses on: **credential-bearing surface read + subsequent SP token use correlation**.
+
+See `attacks/_defender_output/primitives/04_credential_discovery/` for:
+
+- **README.md** — detection rationale and query semantics
+- **cloudtrail_lake_query.sql** — the AWS detection query (baseline-aware SQL over CloudTrail Lake)
+- **scp_snippet.json** — preventive control (SCP-based restriction)
+- **paths.md** — per-path signature details (search for `Z2` for this path's specific detection signature)
+- **adversarial_evasion.md** — documented evasion strategies and their residual detection
+- **azure_symmetry.md** — AWS↔Azure signal correspondence (the Azure counterpart query design)
+- **evaluation.md** — evaluation results
+
+Coverage in the five comparison baseline tools (Cloudsplaining, Prowler, Datadog CloudSIEM, Sigma HQ, CIS AWS Foundations v3.0) is documented in `attacks/_defender_output/methodology/related_work.md`.
+
 ## References
 
 - MITRE ATT&CK [T1552.001 — Credentials In Files](https://attack.mitre.org/techniques/T1552/001/)

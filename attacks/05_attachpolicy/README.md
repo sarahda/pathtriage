@@ -141,6 +141,24 @@ aws iam list-attached-user-policies \
 #       --policy-arn arn:aws:iam::aws:policy/AdministratorAccess
 ```
 
+## Detection
+
+This path is covered by defender-output primitive **02 — IAM Modification (Assign)**.
+
+Detection focuses on: **self-attach with admin-equivalent grant + baseline anomaly**.
+
+See `attacks/_defender_output/primitives/02_iam_mod_assign/` for:
+
+- **README.md** — detection rationale and query semantics
+- **cloudtrail_lake_query.sql** — the AWS detection query (baseline-aware SQL over CloudTrail Lake)
+- **scp_snippet.json** — preventive control (SCP-based restriction)
+- **paths.md** — per-path signature details (search for `05` for this path's specific detection signature)
+- **adversarial_evasion.md** — documented evasion strategies and their residual detection
+- **azure_symmetry.md** — AWS↔Azure signal correspondence (the Azure counterpart query design)
+- **evaluation.md** — evaluation results
+
+Coverage in the five comparison baseline tools (Cloudsplaining, Prowler, Datadog CloudSIEM, Sigma HQ, CIS AWS Foundations v3.0) is documented in `attacks/_defender_output/methodology/related_work.md`.
+
 ## References
 
 - Rhino Security Labs — [AWS IAM Privilege Escalation Methods](https://rhinosecuritylabs.com/aws/aws-privilege-escalation-methods-mitigation/) (method 1: AttachUserPolicy)

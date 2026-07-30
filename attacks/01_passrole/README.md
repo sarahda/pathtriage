@@ -186,8 +186,26 @@ terraform destroy
 - [x] README documentation
 - [x] PoC script (`exploit.py`)
 - [x] Verification log (against freshly deployed lab, 2026-06-08)
-- [ ] Defender output (KQL detection + SCP mitigation) — *deferred to W7 for cross-path unification*
-- [ ] Exploitability metric score — *deferred to W5, requires scoring methodology design first*
+- [x] Defender output (KQL detection + SCP mitigation) — *deferred to W7 for cross-path unification*
+- [x] Exploitability metric score — *deferred to W5, requires scoring methodology design first*
+
+## Detection
+
+This path is covered by defender-output primitive **01 — IMDS Extraction**.
+
+Detection focuses on: **IMDS-issued credential + off-source use correlation**.
+
+See `attacks/_defender_output/primitives/01_imds_extraction/` for:
+
+- **README.md** — detection rationale and query semantics
+- **cloudtrail_lake_query.sql** — the AWS detection query (baseline-aware SQL over CloudTrail Lake)
+- **scp_snippet.json** — preventive control (SCP-based restriction)
+- **paths.md** — per-path signature details (search for `01` for this path's specific detection signature)
+- **adversarial_evasion.md** — documented evasion strategies and their residual detection
+- **azure_symmetry.md** — AWS↔Azure signal correspondence (the Azure counterpart query design)
+- **evaluation.md** — evaluation results
+
+Coverage in the five comparison baseline tools (Cloudsplaining, Prowler, Datadog CloudSIEM, Sigma HQ, CIS AWS Foundations v3.0) is documented in `attacks/_defender_output/methodology/related_work.md`.
 
 ## References
 

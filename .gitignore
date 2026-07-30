@@ -247,3 +247,5 @@ attacks/**/verification_log.raw.txt
 # Terraform plan files — may contain sensitive variable values in binary form
 *.plan
 *.tfplan
+*.bak
+*.bak

@@ -193,6 +193,24 @@ aws ec2 describe-security-groups \
 The local `pathtriage-06-key.pem` file is also removed by `terraform destroy`
 (it is managed by the `local_sensitive_file` resource).
 
+## Detection
+
+This path is covered by defender-output primitive **01 — IMDS Extraction**.
+
+Detection focuses on: **IMDS-issued credential + off-source use correlation**.
+
+See `attacks/_defender_output/primitives/01_imds_extraction/` for:
+
+- **README.md** — detection rationale and query semantics
+- **cloudtrail_lake_query.sql** — the AWS detection query (baseline-aware SQL over CloudTrail Lake)
+- **scp_snippet.json** — preventive control (SCP-based restriction)
+- **paths.md** — per-path signature details (search for `P6` for this path's specific detection signature)
+- **adversarial_evasion.md** — documented evasion strategies and their residual detection
+- **azure_symmetry.md** — AWS↔Azure signal correspondence (the Azure counterpart query design)
+- **evaluation.md** — evaluation results
+
+Coverage in the five comparison baseline tools (Cloudsplaining, Prowler, Datadog CloudSIEM, Sigma HQ, CIS AWS Foundations v3.0) is documented in `attacks/_defender_output/methodology/related_work.md`.
+
 ## References
 
 - Rhino Security Labs — [AWS IAM Privilege Escalation Methods](https://rhinosecuritylabs.com/aws/aws-privilege-escalation-methods-mitigation/) (EC2 / IMDS section)
