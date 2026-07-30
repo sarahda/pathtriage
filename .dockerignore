@@ -1,0 +1,21 @@
+.git
+.gitignore
+*.egg-info
+__pycache__
+**/__pycache__
+*.pyc
+*.bak
+
+# Report and coursework artefacts — not needed to run anything
+report/
+midway/
+docs/
+*.graphml
+appe_pytest.txt
+
+# Terraform state and provider binaries: large, and the labs are
+# deployed from the host, not from inside the image.
+environments/
+**/.terraform/
+**/.terraform.lock.hcl
+**/terraform.tfstate*

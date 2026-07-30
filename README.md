@@ -4,14 +4,53 @@ Exploitability-ranked IAM attack-path discovery and defender-output synthesis fo
 
 ## Status
 
-✅ **Complete** — COMP9301 T2 2026 
+✅ **Complete** — COMP9301 T2 2026
 
 - **Midway report submitted** — verified catalogue, rubric v1, prototype design (June 2026)
 - **AWS arm complete** — 8 / 8 paths verified end-to-end ✅
 - **Azure arm complete** — 8 / 8 paths verified end-to-end ✅
 - **Catalogue total** — 16 / 16 paths verified
-- **Tool skeleton**: `pathtriage scan --provider aws` enumerates IAM and builds the initial attack graph (Azure enumerator: catalogue documented, integration deferred)
-- **Defender-output module**: methodology + 5 primitives committed (`attacks/_defender_output/`); evaluation complete: macro precision 1.000, attack-level recall 1.000, mean MTTD 9.2s over a 700,023-event corpus
+- **Tool**: `pathtriage scan | discover | rank | detail` — IAM enumeration, BFS path discovery, and rubric-based ranking, with an offline fixture mode (Azure enumerator: catalogue documented, integration deferred)
+- **Defender-output module**: methodology + 5 primitives committed (`attacks/_defender_output/`); evaluation complete — macro precision 1.000, attack-level recall 1.000, mean MTTD 9.2 s over a 700,023-event corpus
+
+---
+
+## Quick start
+
+No cloud credentials are required for the test suite, the fixture-mode CLI, or the detection evaluation.
+
+### Option A — Docker (recommended)
+
+```bash
+git clone https://github.com/sarahda/pathtriage.git
+cd pathtriage
+docker build -t pathtriage .
+docker run --rm pathtriage
+```
+
+The default command runs the unit test suite, so a successful `docker run` is itself evidence that the environment is correctly provisioned. Expect **10 passed**.
+
+For the reproduction steps below, open a shell in the image:
+
+```bash
+docker run --rm -it pathtriage bash
+```
+
+### Option B — local install
+
+Requires Python 3.11 or later.
+
+```bash
+git clone https://github.com/sarahda/pathtriage.git
+cd pathtriage
+python3 -m venv .venv && source .venv/bin/activate
+pip install -e ".[evaluation]"
+pytest -v          # expect: 10 passed
+```
+
+> The `[evaluation]` extra installs `duckdb`, which the detection harness requires. `pip install -e .` alone is sufficient for the CLI but not for the evaluation steps.
+
+---
 
 ## Attack Path Catalogue
 
@@ -43,6 +82,8 @@ Exploitability-ranked IAM attack-path discovery and defender-output synthesis fo
 
 Azure paths Z2–Z8 are deployed on a separate personal-MSA subscription; Z1 remains on the UNSW Azure for Students subscription. Rationale documented in `attacks/Z2_sp_credential_theft/README.md` (D-Z2-01) — the UNSW tenant policy disables application registration, blocking any Azure path that requires Service Principal creation.
 
+---
+
 ## Key Findings
 
 Documented per-path in the individual READMEs; the ones with material contribution to the AWS↔Azure comparative analysis are summarised here.
@@ -69,6 +110,8 @@ Documented per-path in the individual READMEs; the ones with material contributi
 
 - **D-Z7-01 (cloud-init unreliable for secret injection on Azure Linux VMs)**. Azure Linux VMs create the admin SSH user via the Azure Guest Agent (waagent), not via cloud-init's `users` module. Cloud-init `write_files` runs before waagent completes user provisioning, so files owned by the admin user fail with "user not found". This also leaves `/home/azureuser` in an inconsistent ownership state (root-owned), blocking subsequent SSH-based writes until an explicit `chown`. Two-step deployment (terraform apply + credential SCP) documented as the reliable pattern.
 
+---
+
 ## Detection Primitives (Convergence Refinement)
 
 The catalogue is structured around defender-relevant convergence points rather than per-path detection. The **midway report claimed 8 AWS paths → 4 detection primitives (2:1 compression)**. During Z4 verification, the IAM-modification class was found to split into two structurally distinct primitives with different event surfaces and different detection signatures. The refined mapping is **8 AWS paths → 5 primitives (1.6:1 compression)** — a small loss in headline compression, but semantically lossless: no primitive collapses two independently-preventable attack classes.
@@ -92,12 +135,15 @@ Rationale for the assign-vs-mutate split (previously merged into "IAM policy mod
 
 Different event surfaces, different detection queries, different forensic signatures. Treating them as one primitive collapses two independently-detectable signals.
 
-Defender-output design (CloudTrail Lake queries + SCP snippets + baseline-aware joins) is developed cross-path in the primitive module (`attacks/_defender_output/`), not duplicated per path. Phase 4 (evaluation execution) complete — see `attacks/_defender_output/evaluation/`.
+Defender-output design (CloudTrail Lake queries + SCP snippets + baseline-aware joins) is developed cross-path in the primitive module (`attacks/_defender_output/`), not duplicated per path. Evaluation execution is complete — see `attacks/_defender_output/evaluation/`.
+
+---
 
 ## Repository Layout
 
 ```text
 pathtriage/
+├── Dockerfile                                # reproducible environment
 ├── environments/
 │   ├── baseline/                             # AWS shared infra
 │   ├── baseline_azure/                       # Azure UNSW-tenant baseline (Z1)
@@ -118,7 +164,8 @@ pathtriage/
 │   └── _defender_output/                             # detection primitives
 │       ├── README.md
 │       ├── PLAN.md
-│       ├── methodology/
+│       ├── methodology/                              # corpus generators + protocol
+│       ├── evaluation/                               # corpora, harness, results
 │       └── primitives/
 │           ├── 01_imds_extraction/
 │           ├── 02_iam_mod_assign/
@@ -126,29 +173,148 @@ pathtriage/
 │           ├── 04_credential_discovery/
 │           └── 05_trust_topology/
 ├── pathtriage/                               # Python package (CLI + enumerators + graph)
+├── tests/                                    # unit tests
+├── report/                                   # Technical Report sources + rubric validation
 ├── midway/                                   # midway report + supporting documents
 └── docs/
 ```
 
-## Reproducing a Single Attack Path
+---
+
+## Reproducing the results
+
+Every quantitative claim in the Technical Report can be regenerated from a clean clone. Steps 1–5 run entirely offline.
+
+### 1. Path discovery and ranking (offline)
+
+```bash
+python3 -m pathtriage discover --fixture pathtriage/fixtures/aws_catalogue_sample.json --limit 10
+python3 -m pathtriage rank     --fixture pathtriage/fixtures/aws_catalogue_sample.json --limit 10
+```
+
+`rank` orders the discovered paths under rubric v1 with weights 0.30 / 0.20 / 0.30 / 0.20. Weight rationale and per-input definitions are in the Technical Report, Chapter 8.
+
+### 2. Verify the evaluation corpus
+
+The corpus is committed so the evaluation is reproducible without regenerating it. Confirm you have the same bytes the reported figures were computed from:
+
+```bash
+wc -l attacks/_defender_output/evaluation/corpora/combined_corpus.jsonl
+# expect: 700023
+
+shasum -a 256 attacks/_defender_output/evaluation/corpora/combined_corpus.jsonl
+# expect: d05bf03f27f18d267286614be20bbf7f5530a820f247ab768b11f7a95c2e92e1
+
+shasum -a 256 attacks/_defender_output/evaluation/corpora/positive_corpus.jsonl
+# expect: cc2ac4c5643335b66a4ca4eb7a03b848eea86dd6e092be86e932079a81f27e93
+```
+
+These hashes also appear in the Technical Report, Appendix C. If they match, the input to the evaluation is byte-identical to the one behind the reported numbers.
+
+### 3. Regenerate the benign corpus (optional)
+
+The generator is deterministic under a fixed seed, so the benign portion can be rebuilt rather than trusted:
+
+```bash
+python3 attacks/_defender_output/methodology/generate_baseline.py \
+    --rate 100000 --days 7 --seed 42 \
+    --output /tmp/baseline_corpus.jsonl
+```
+
+Category shares, anchor pools and temporal patterns are documented in `attacks/_defender_output/methodology/baseline_generation.md`.
+
+### 4. Re-run the detection evaluation
+
+```bash
+cd attacks/_defender_output/evaluation
+python3 run_evaluation.py
+cd -
+
+jq '.aggregate, .coverage_gate' \
+   attacks/_defender_output/evaluation/results/primitive_evaluation.json
+```
+
+Expected, matching the Technical Report, Chapter 7:
+
+| Metric | Value |
+|---|---|
+| Macro precision | 1.000 |
+| Attack-level recall | 1.000 |
+| Event-level recall | 0.611 |
+| Mean MTTD | 9.2 s |
+| Paths detected | 8 / 8 |
+
+All three pre-registered gates (`all_precision_ge_0.95`, `all_attack_recall_1.0`, `median_mttd_le_60`) should report `true`.
+
+> **Note on determinism.** The aggregate figures above are stable across
+> runs. The `tp_events` and `fn_events` arrays inside
+> `primitive_evaluation.json` may list the same events in a different
+> order, and where several events satisfy a primitive's conditions
+> equally the specific event IDs recorded can differ: the detection
+> queries do not impose a total ordering, so DuckDB is free to return
+> qualifying rows in any order. Counts, precision, recall and MTTD are
+> unaffected. Compare aggregates rather than diffing the file
+> byte-for-byte.
+
+Per-primitive figures:
+
+```bash
+jq -r '.per_primitive | to_entries[] |
+  "primitive \(.key)  paths=\(.value.covered_paths|join(","))  TP=\(.value.tp)  FP=\(.value.fp)  precision=\(.value.precision)  mttd=\(.value.mttd_mean_sec)s"' \
+  attacks/_defender_output/evaluation/results/primitive_evaluation.json
+```
+
+### 5. Rubric validation (optional)
+
+```bash
+pip install scipy numpy matplotlib
+python3 report/rubric_validation/cvss_comparison.py
+```
+
+Reproduces the CVSS cross-comparison (Spearman ρ) and the scatter plot used in Chapter 8.
+
+### 6. Reproducing a single attack path (requires cloud credentials)
+
+This step deploys real infrastructure into your own account and will incur cost. Tear down with `terraform destroy` when finished.
 
 ```bash
 # AWS example (path 01)
 cd environments/scenarios/01_passrole
 terraform init && terraform apply -auto-approve
+terraform output -json > output.json
 cd ../../../attacks/01_passrole
 python3 exploit.py --tf-output ../../environments/scenarios/01_passrole/output.json
+```
 
+```bash
 # Azure example (Z4)
 cd environments/scenarios/Z4_custom_role_definition_abuse
 terraform init && terraform apply -auto-approve
-# (see README in the attack directory for the full VM-side execution flow)
+terraform output -json > output.json
+# Z4 executes from the VM itself; see the attack README for the SSH flow
 ```
 
 Each attack directory (`attacks/<id>/README.md`) contains full deployment, execution, expected output, and cleanup steps.
+
+### What this does *not* reproduce
+
+Two things in the Technical Report cannot be regenerated from this repository alone.
+
+**The attack-path executions.** The sixteen verification logs in `attacks/*/verification_log.txt` were captured against live AWS and Azure accounts. The Terraform is committed and the per-path READMEs document the expected output, but the logs themselves are evidence of past runs, not something this repository can replay.
+
+**CloudTrail Lake execution.** The detection primitives are authored in CloudTrail Lake SQL. The evaluation above runs a DuckDB translation of the same queries against a local corpus, which is what makes it free and reproducible. Validation against a live CloudTrail Lake feed has not been performed and is listed as future work in the Technical Report.
+
+---
 
 ## References
 
 - MITRE ATT&CK for Cloud (T15xx, T10xx family)
 - CIS AWS Foundations Benchmark v3.0
+- Rhino Security Labs — AWS IAM Privilege Escalation Methods
 - Related work comparison (Cloudsplaining, Prowler, Datadog CloudSIEM, Sigma HQ) — documented in `attacks/_defender_output/methodology/related_work.md`
+
+## Licence
+
+MIT — see [LICENSE](LICENSE).
+
+Deliberately vulnerable infrastructure is provided for security research and education. Deploy only into isolated accounts you control, and tear it down when finished.
