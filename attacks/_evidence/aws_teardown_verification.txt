@@ -1,0 +1,9 @@
+=== AWS teardown verification — Thu 30 Jul 2026 05:57:53 UTC ===
+
+--- EC2 ---
+-------------------
+|DescribeInstances|
+
+--- S3 ---
+
+--- IAM roles (pathtriage) ---
