@@ -4,7 +4,7 @@ Exploitability-ranked IAM attack-path discovery and defender-output synthesis fo
 
 ## Status
 
-✅ **Complete** — COMP9301 T2 2026
+✅ **Complete** — COMP9301 2026
 
 - **Midway report submitted** — verified catalogue, rubric v1, prototype design (June 2026)
 - **AWS arm complete** — 8 / 8 paths verified end-to-end ✅
