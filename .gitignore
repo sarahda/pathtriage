@@ -249,3 +249,15 @@ attacks/**/verification_log.raw.txt
 *.tfplan
 *.bak
 *.bak
+
+# LaTeX build artefacts
+*.aux
+*.bbl
+*.blg
+*.lof
+*.lot
+*.out
+*.toc
+*.synctex.gz
+*.fls
+*.fdb_latexmk
