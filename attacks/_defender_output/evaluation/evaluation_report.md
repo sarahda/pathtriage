@@ -8,7 +8,7 @@
 
 ## Executive summary
 
-The five detection primitives were evaluated against a synthetic CloudTrail corpus of 700,023 events (700,000 benign + 23 attack) using DuckDB as the query engine, with production validation to CloudTrail Lake deferred to W8 Fri (2026-07-24).
+The five detection primitives were evaluated against a synthetic CloudTrail corpus of 700,023 events (700,000 benign + 23 attack) using DuckDB as the query engine. CloudTrail Lake production validation is future work; the results below are DuckDB-only.
 
 **Headline metrics**:
 - **Macro precision: 1.000** — no false positives across any primitive on 700k benign events

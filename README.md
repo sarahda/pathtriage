@@ -4,14 +4,14 @@ Exploitability-ranked IAM attack-path discovery and defender-output synthesis fo
 
 ## Status
 
-🚧 **Work in progress** 
+✅ **Complete** — COMP9301 T2 2026 
 
 - **Midway report submitted** — verified catalogue, rubric v1, prototype design (June 2026)
 - **AWS arm complete** — 8 / 8 paths verified end-to-end ✅
 - **Azure arm complete** — 8 / 8 paths verified end-to-end ✅
 - **Catalogue total** — 16 / 16 paths verified
-- **Tool skeleton**: `pathtriage scan --provider aws` enumerates IAM and builds the initial attack graph (Azure enumerator in progress)
-- **Defender-output module**: methodology + 5 primitives committed (`attacks/_defender_output/`); Phase 4 evaluation execution pending
+- **Tool skeleton**: `pathtriage scan --provider aws` enumerates IAM and builds the initial attack graph (Azure enumerator: catalogue documented, integration deferred)
+- **Defender-output module**: methodology + 5 primitives committed (`attacks/_defender_output/`); evaluation complete: macro precision 1.000, attack-level recall 1.000, mean MTTD 9.2s over a 700,023-event corpus
 
 ## Attack Path Catalogue
 
@@ -92,7 +92,7 @@ Rationale for the assign-vs-mutate split (previously merged into "IAM policy mod
 
 Different event surfaces, different detection queries, different forensic signatures. Treating them as one primitive collapses two independently-detectable signals.
 
-Defender-output design (CloudTrail Lake queries + SCP snippets + baseline-aware joins) is developed cross-path in the primitive module (`attacks/_defender_output/`), not duplicated per path. Phase 4 (evaluation execution — synthetic baseline corpus, TP/FP measurement, comparison to 5 baseline tools) pending.
+Defender-output design (CloudTrail Lake queries + SCP snippets + baseline-aware joins) is developed cross-path in the primitive module (`attacks/_defender_output/`), not duplicated per path. Phase 4 (evaluation execution) complete — see `attacks/_defender_output/evaluation/`.
 
 ## Repository Layout
 

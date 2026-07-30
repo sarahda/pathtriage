@@ -8,3 +8,6 @@ networkx>=3.2
 
 # PoC scripts
 requests>=2.31
+
+# Evaluation harness
+duckdb>=0.10
