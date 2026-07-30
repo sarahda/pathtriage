@@ -14,7 +14,13 @@ from pathtriage import __version__
 
 def cmd_scan(args: argparse.Namespace) -> int:
     if args.provider != "aws":
-        print(f"provider '{args.provider}' not implemented yet (W7: azure)", file=sys.stderr)
+        print(
+    "[!] Azure enumeration is not implemented in this release.\n"
+    "    The eight Azure attack paths are documented under attacks/Z*/ "
+    "with verified execution logs;\n"
+    "    graph integration is future work (see README).",
+    file=sys.stderr,
+)
         return 2
     from pathtriage.enumerators.aws import AwsEnumerator
     from pathtriage.graph.builder import build_graph, summarise
@@ -43,7 +49,13 @@ def _load_inventory(args: argparse.Namespace):
         print(f"[*] loading inventory from fixture: {args.fixture}")
         return load_fixture(args.fixture)
     if args.provider != "aws":
-        print(f"provider '{args.provider}' not implemented yet (W7: azure)", file=sys.stderr)
+        print(
+    "[!] Azure enumeration is not implemented in this release.\n"
+    "    The eight Azure attack paths are documented under attacks/Z*/ "
+    "with verified execution logs;\n"
+    "    graph integration is future work (see README).",
+    file=sys.stderr,
+)
         return None
     from pathtriage.enumerators.aws import AwsEnumerator
     print(f"[*] enumerating AWS IAM (profile={args.profile}, region={args.region})")

@@ -1,0 +1,182 @@
+% ============================================================
+% PathTriage — COMP9301 Midway Report
+% Author: Hyeon (Tessa) Moon, z5660470
+% Supervisor: Lachlan Jones
+% Submitted: July 2026
+% ============================================================
+\documentclass[11pt,a4paper]{report}
+
+% --- Packages ---
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{mathptmx}              % Times-like serif font
+\usepackage[margin=1in]{geometry}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\hypersetup{
+  colorlinks=true,
+  linkcolor=black,
+  citecolor=black,
+  urlcolor=blue
+}
+\usepackage{cite}                  % IEEE-style numeric citations [1], [2-4]
+\usepackage{booktabs}              % nicer tables
+\usepackage{listings}              % code blocks
+\usepackage{caption}
+\usepackage{setspace}
+\onehalfspacing
+
+% --- Metadata ---
+\newcommand{\thesistitle}{PathTriage: Exploitability-Ranked IAM Attack-Path Discovery and Defender-Output Synthesis for AWS and Azure}
+\newcommand{\authorname}{Hyeon (Tessa) Moon}
+\newcommand{\studentid}{z5660470}
+\newcommand{\supervisor}{Lachlan Jones}
+\newcommand{\submissiondate}{Submitted: July 2026}
+
+% ============================================================
+\begin{document}
+
+% --- Custom title page (matches the UNSW sample style) ---
+\begin{titlepage}
+\centering
+\vspace*{2cm}
+
+% \includegraphics[width=4cm]{unsw_logo.png}  % uncomment when logo file is added
+\vspace{1.5cm}
+
+\textbf{School of Computer Science and Engineering}\\[0.4cm]
+\textbf{Faculty of Engineering}\\[0.4cm]
+\textbf{The University of New South Wales}
+
+\vspace{2.5cm}
+{\Large \textbf{\thesistitle}}
+
+\vspace{2.5cm}
+by
+
+\vspace{0.8cm}
+{\Large \authorname}
+
+\vspace{0.3cm}
+\studentid
+
+\vfill
+\submissiondate \hspace{2em} Supervisor: \supervisor
+\end{titlepage}
+
+% ============================================================
+% Preamble
+% ============================================================
+\chapter*{Preamble}
+\addcontentsline{toc}{chapter}{Preamble}
+
+\section*{Abstract}
+This work investigates the construction of an exploitability-ranked catalogue of
+IAM privilege-escalation paths in cloud environments, and the synthesis of
+defender output --- detection queries and remediation policies --- for each ranked
+path. The work covers both AWS and Azure, and introduces AI agents (Bedrock
+Agents, Azure OpenAI Assistants) as first-class entry nodes in the IAM attack
+graph, bridging MITRE ATLAS and MITRE ATT\&CK for Cloud. This report acts as a
+progress update for the first phase of a two-term Master's project.
+
+\section*{Acknowledgements}
+This work has been supported by the academic staff of UNSW's School of Computer
+Science and Engineering. Supervision and direction have been provided by
+\supervisor.
+
+% ============================================================
+% Table of Figures (auto-generated)
+% ============================================================
+\chapter*{Table of Figures}
+\addcontentsline{toc}{chapter}{Table of Figures}
+\listoffigures
+
+% ============================================================
+% Definitions
+% ============================================================
+\chapter*{Definitions}
+\addcontentsline{toc}{chapter}{Definitions}
+
+\begin{description}
+  \item[IAM] Identity and Access Management. The cloud-provider subsystem
+    that governs which principals may perform which actions on which resources.
+  \item[Attack path] A sequence of permissions and resources by which a
+    low-privileged principal can reach an effectively higher-privileged state.
+  \item[PoC] Proof of Concept. A working implementation that demonstrates an
+    attack primitive end-to-end against a controlled lab.
+  \item[IMDS] Instance Metadata Service. The local HTTP endpoint
+    (\texttt{169.254.169.254}) on AWS EC2 instances that returns instance and
+    role information, including temporary credentials.
+  \item[MITRE ATT\&CK for Cloud] The adversary-tactics-and-techniques framework
+    extended to IaaS environments.
+  \item[MITRE ATLAS] The adversarial-threat framework for AI and machine
+    learning systems.
+\end{description}
+
+% ============================================================
+% Table of Contents (auto-generated)
+% ============================================================
+\tableofcontents
+
+% ============================================================
+\chapter{Introduction}
+
+The rise of cloud computing has shifted the security perimeter from the network
+to the identity layer. Misconfigured IAM is now a leading cause of cloud
+breaches\cite{placeholder_breach_stats}.
+
+Existing IAM analysis tools largely operate at the per-permission level: they
+audit whether a principal holds a given action on a given resource. They miss a
+distinct class of vulnerability --- the \emph{combination} of permissions that
+forms a viable escalation path. PathTriage addresses this gap by modelling cloud
+IAM as a directed graph, discovering reachable escalation paths, ranking them by
+a defended exploitability metric, and emitting both detection rules and
+mitigation policies for each ranked path.
+
+% ============================================================
+\chapter{Previous Work}
+
+\section{IAM Analysis Tools}
+% BloodHound OpenGraph, PMapper, IAMSpy, ROADtools
+
+\section{Cloud Attack Path Research}
+% Rhino Security Labs catalogue, CloudGoat, MITRE ATT&CK Cloud
+
+\section{AI Agent Security and MITRE ATLAS}
+% Prompt injection, function-calling tools as IAM escalation, ATLAS framework
+
+% ============================================================
+\chapter{Current Progress}
+
+\section{Lab Architecture}
+% baseline + scenarios pattern, per-path artefact convention
+
+\section{Verified Attack Paths}
+% Paths 1, 2, 3, ... with MITRE mapping and verification log evidence
+
+\section{PathTriage Prototype}
+% CLI + AWS enumerator + NetworkX graph; W2 scope vs deferred edges
+
+\section{Engineering Decision Log}
+% audit trail methodology; deviation example (Path 3 self-attach)
+
+% ============================================================
+\chapter{Future Work}
+
+\section{Remaining T2 Catalogue}
+% paths 4-8, N5 AWS arm (Bedrock chain)
+
+\section{Term 3 Scope}
+% Azure deepening, N5 Azure arm, benchmark, expert study, thesis
+
+\section{Risks and Mitigations}
+% scope risk, AI service access, vendor dependence
+
+% ============================================================
+% Bibliography
+% ============================================================
+\bibliographystyle{IEEEtran}
+\bibliography{refs}
+
+\end{document}

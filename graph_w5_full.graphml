@@ -1,0 +1,106 @@
+<?xml version='1.0' encoding='utf-8'?>
+<graphml xmlns="http://graphml.graphdrawing.org/xmlns" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://graphml.graphdrawing.org/xmlns http://graphml.graphdrawing.org/xmlns/1.0/graphml.xsd"><key id="d2" for="edge" attr.name="rel" attr.type="string"/>
+<key id="d1" for="node" attr.name="kind" attr.type="string"/>
+<key id="d0" for="node" attr.name="label" attr.type="string"/>
+<graph edgedefault="directed"><node id="arn:aws:iam::559292738121:policy/pathtriage-attachpolicy-target">
+  <data key="d0">pathtriage-attachpolicy-target</data>
+  <data key="d1">policy</data>
+</node>
+<node id="arn:aws:iam::559292738121:policy/service-role/AWSLambdaBasicExecutionRole-146f29af-6258-4283-9d73-851429cc4c36">
+  <data key="d0">AWSLambdaBasicExecutionRole-146f29af-6258-4283-9d73-851429cc4c36</data>
+  <data key="d1">policy</data>
+</node>
+<node id="arn:aws:iam::559292738121:policy/pathtriage-createpolicyversion-target">
+  <data key="d0">pathtriage-createpolicyversion-target</data>
+  <data key="d1">policy</data>
+</node>
+<node id="arn:aws:iam::559292738121:user/pathtriage-07-backup-user">
+  <data key="d0">pathtriage-07-backup-user</data>
+  <data key="d1">user</data>
+</node>
+<node id="arn:aws:iam::aws:policy/AdministratorAccess">
+  <data key="d0">AdministratorAccess</data>
+  <data key="d1">policy</data>
+</node>
+<node id="arn:aws:iam::559292738121:user/pathtriage-08-deploy-user">
+  <data key="d0">pathtriage-08-deploy-user</data>
+  <data key="d1">user</data>
+</node>
+<node id="arn:aws:iam::559292738121:user/pathtriage-admin">
+  <data key="d0">pathtriage-admin</data>
+  <data key="d1">user</data>
+</node>
+<node id="arn:aws:iam::559292738121:user/pathtriage-low-priv-attacker">
+  <data key="d0">pathtriage-low-priv-attacker</data>
+  <data key="d1">user</data>
+</node>
+<node id="arn:aws:iam::559292738121:role/service-role/hello-world-web-role-3i04n9x7">
+  <data key="d0">hello-world-web-role-3i04n9x7</data>
+  <data key="d1">role</data>
+</node>
+<node id="arn:aws:iam::559292738121:role/pathtriage-06-ec2-admin">
+  <data key="d0">pathtriage-06-ec2-admin</data>
+  <data key="d1">role</data>
+</node>
+<node id="arn:aws:iam::559292738121:role/pathtriage-07-lambda-exec">
+  <data key="d0">pathtriage-07-lambda-exec</data>
+  <data key="d1">role</data>
+</node>
+<node id="arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole">
+  <data key="d0">AWSLambdaBasicExecutionRole</data>
+  <data key="d1">policy</data>
+</node>
+<node id="arn:aws:iam::559292738121:role/pathtriage-assume-role-chain-r1">
+  <data key="d0">pathtriage-assume-role-chain-r1</data>
+  <data key="d1">role</data>
+</node>
+<node id="arn:aws:iam::559292738121:role/pathtriage-assume-role-chain-r2">
+  <data key="d0">pathtriage-assume-role-chain-r2</data>
+  <data key="d1">role</data>
+</node>
+<node id="arn:aws:iam::559292738121:role/pathtriage-imds-instance-role">
+  <data key="d0">pathtriage-imds-instance-role</data>
+  <data key="d1">role</data>
+</node>
+<node id="arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess">
+  <data key="d0">AmazonS3ReadOnlyAccess</data>
+  <data key="d1">policy</data>
+</node>
+<node id="arn:aws:iam::559292738121:role/pathtriage-passrole-admin-target">
+  <data key="d0">pathtriage-passrole-admin-target</data>
+  <data key="d1">role</data>
+</node>
+<edge source="arn:aws:iam::559292738121:user/pathtriage-07-backup-user" target="arn:aws:iam::aws:policy/AdministratorAccess">
+  <data key="d2">HAS_POLICY</data>
+</edge>
+<edge source="arn:aws:iam::559292738121:user/pathtriage-08-deploy-user" target="arn:aws:iam::aws:policy/AdministratorAccess">
+  <data key="d2">HAS_POLICY</data>
+</edge>
+<edge source="arn:aws:iam::559292738121:user/pathtriage-admin" target="arn:aws:iam::aws:policy/AdministratorAccess">
+  <data key="d2">HAS_POLICY</data>
+</edge>
+<edge source="arn:aws:iam::559292738121:user/pathtriage-low-priv-attacker" target="arn:aws:iam::559292738121:policy/pathtriage-attachpolicy-target">
+  <data key="d2">HAS_POLICY</data>
+</edge>
+<edge source="arn:aws:iam::559292738121:user/pathtriage-low-priv-attacker" target="arn:aws:iam::559292738121:policy/pathtriage-createpolicyversion-target">
+  <data key="d2">HAS_POLICY</data>
+</edge>
+<edge source="arn:aws:iam::559292738121:role/service-role/hello-world-web-role-3i04n9x7" target="arn:aws:iam::559292738121:policy/service-role/AWSLambdaBasicExecutionRole-146f29af-6258-4283-9d73-851429cc4c36">
+  <data key="d2">HAS_POLICY</data>
+</edge>
+<edge source="arn:aws:iam::559292738121:role/pathtriage-06-ec2-admin" target="arn:aws:iam::aws:policy/AdministratorAccess">
+  <data key="d2">HAS_POLICY</data>
+</edge>
+<edge source="arn:aws:iam::559292738121:role/pathtriage-07-lambda-exec" target="arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole">
+  <data key="d2">HAS_POLICY</data>
+</edge>
+<edge source="arn:aws:iam::559292738121:role/pathtriage-assume-role-chain-r2" target="arn:aws:iam::aws:policy/AdministratorAccess">
+  <data key="d2">HAS_POLICY</data>
+</edge>
+<edge source="arn:aws:iam::559292738121:role/pathtriage-imds-instance-role" target="arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess">
+  <data key="d2">HAS_POLICY</data>
+</edge>
+<edge source="arn:aws:iam::559292738121:role/pathtriage-passrole-admin-target" target="arn:aws:iam::aws:policy/AdministratorAccess">
+  <data key="d2">HAS_POLICY</data>
+</edge>
+</graph></graphml>
