@@ -1,0 +1,22 @@
+=== Azure teardown verification — Thu 30 Jul 2026 04:31:28 UTC ===
+
+--- subscription ---
+EnvironmentName    HomeTenantId                          IsDefault    Name                  State    TenantDefaultDomain            TenantDisplayName    TenantId
+-----------------  ------------------------------------  -----------  --------------------  -------  -----------------------------  -------------------  ------------------------------------
+AzureCloud         e8c547f6-1717-4e2c-a1cb-11c95f063f13  True         Azure subscription 1  Enabled  mcneem99naver.onmicrosoft.com  Default Directory    e8c547f6-1717-4e2c-a1cb-11c95f063f13
+
+--- resource groups ---
+Name              Location       Status
+----------------  -------------  ---------
+NetworkWatcherRG  australiaeast  Succeeded
+
+--- resources ---
+Name                          ResourceGroup     Location       Type                               Status
+----------------------------  ----------------  -------------  ---------------------------------  ---------
+NetworkWatcher_australiaeast  NetworkWatcherRG  australiaeast  Microsoft.Network/networkWatchers  Succeeded
+
+--- custom roles ---
+
+
+--- service principals ---
+
