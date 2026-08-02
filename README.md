@@ -202,36 +202,34 @@ python3 -m pathtriage rank     --fixture pathtriage/fixtures/aws_catalogue_sampl
 
 `rank` orders the discovered paths under rubric v1 with weights 0.30 / 0.20 / 0.30 / 0.20. Weight rationale and per-input definitions are in the Technical Report, Chapter 8.
 
-### 2. Verify the evaluation corpus
+### 2. The evaluation corpus
 
-The corpus is committed so the evaluation is reproducible without regenerating it. Confirm you have the same bytes the reported figures were computed from:
-
-```bash
-wc -l attacks/_defender_output/evaluation/corpora/combined_corpus.jsonl
-# expect: 700023
-
-shasum -a 256 attacks/_defender_output/evaluation/corpora/combined_corpus.jsonl
-# expect: d05bf03f27f18d267286614be20bbf7f5530a820f247ab768b11f7a95c2e92e1
-
-shasum -a 256 attacks/_defender_output/evaluation/corpora/positive_corpus.jsonl
-# expect: cc2ac4c5643335b66a4ca4eb7a03b848eea86dd6e092be86e932079a81f27e93
-```
-
-These hashes also appear in the Technical Report, Appendix C. If they match, the input to the evaluation is byte-identical to the one behind the reported numbers.
-
-### 3. Regenerate the benign corpus (optional)
-
-The generator is deterministic under a fixed seed, so the benign portion can be rebuilt rather than trusted:
+The benign corpus is 591 MB, past what GitHub will hold, so it is
+generated rather than committed:
 
 ```bash
 python3 attacks/_defender_output/methodology/generate_baseline.py \
     --rate 100000 --days 7 --seed 42 \
-    --output /tmp/baseline_corpus.jsonl
+    --start-date 2026-06-30 --version 2026-07-17-1 \
+    --account-id 559292738121 \
+    --output attacks/_defender_output/evaluation/corpora/baseline_reference.jsonl
 ```
 
-Category shares, anchor pools and temporal patterns are documented in `attacks/_defender_output/methodology/baseline_generation.md`.
+The attack corpus is small and is committed at
+`corpora/positive_corpus.jsonl` — 23 labelled events across the eight
+AWS paths.
 
-### 4. Re-run the detection evaluation
+The SHA-256 values quoted in the Technical Report record the exact
+input the reported figures were computed from on 17 July. A run today
+does not reproduce those bytes, so treat them as provenance rather
+than as a checksum to match. What does reproduce is the evaluation
+itself. Running the harness against a freshly generated baseline plus
+the committed attack corpus returns the same aggregate figures —
+macro precision 1.000, attack-level recall 1.000, mean MTTD 9.2 s —
+which is a stronger result than byte equality would be, since the
+benign traffic differs.
+
+### 3. Re-run the detection evaluation
 
 ```bash
 cd attacks/_defender_output/evaluation
@@ -272,7 +270,7 @@ jq -r '.per_primitive | to_entries[] |
   attacks/_defender_output/evaluation/results/primitive_evaluation.json
 ```
 
-### 5. Rubric validation (optional)
+### 4. Rubric validation (optional)
 
 ```bash
 pip install scipy numpy matplotlib
@@ -281,7 +279,7 @@ python3 report/rubric_validation/cvss_comparison.py
 
 Reproduces the CVSS cross-comparison (Spearman ρ) and the scatter plot used in Chapter 8.
 
-### 6. Reproducing a single attack path (requires cloud credentials)
+### 5. Reproducing a single attack path (requires cloud credentials)
 
 This step deploys real infrastructure into your own account and will incur cost. Tear down with `terraform destroy` when finished.
 
