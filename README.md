@@ -2,6 +2,14 @@
 
 Exploitability-ranked IAM attack-path discovery and defender-output synthesis for AWS and Azure.
 
+## Demo
+
+Five demonstration videos are attached to
+[release v1.0](https://github.com/sarahda/pathtriage/releases/tag/v1.0):
+the exploit chain, the detection run over 700,023 events, the coverage
+gap, and both arms of the Azure Z4 privilege-escalation guard.
+
+
 ## Status
 
 ✅ **Complete** — COMP9301 2026
