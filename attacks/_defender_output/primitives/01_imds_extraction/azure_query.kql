@@ -1,0 +1,55 @@
+// PathTriage Primitive 01 — Managed-identity token extraction (Azure)
+//
+// Detects: a managed-identity token issued to a VM, then used from a caller
+// address that does not match the VM's expected network origin.
+//
+// Covers Azure attack paths: Z1 (single-VM IMDS extraction),
+//                            Z8 (cross-VM via runCommand).
+//
+// AWS counterpart: primitives/01_imds_extraction/cloudtrail_lake_query.sql
+//
+// Tunable parameters
+//   lookback              — anomaly window (default 24h)
+//   baseline_days         — historical window for the source binding (30d)
+//   vnet_egress           — the addresses managed identities normally use
+//
+// Note on log sources. This query joins AzureActivity against
+// AADServicePrincipalSignInLogs. The sign-in table is not enabled by default;
+// a tenant without it will return no rows rather than failing visibly.
+// See Finding 6 in the Technical Report.
+
+let lookback      = 24h;
+let baseline_days = 30d;
+let vnet_egress   = dynamic(["20.53.100.10", "20.53.100.11"]);
+//
+// Per-identity historical source set, built from the baseline window and
+// deliberately excluding the anomaly window so the baseline cannot be
+// poisoned by the activity being scored.
+let identity_baseline =
+    AzureActivity
+    | where TimeGenerated between (ago(baseline_days) .. ago(lookback))
+    | where isnotempty(Caller)
+    | summarize known_ips = make_set(CallerIpAddress, 100) by Caller;
+//
+AzureActivity
+| where TimeGenerated > ago(lookback)
+| extend claims      = todynamic(tostring(parse_json(tostring(Authorization)).claims))
+| extend caller_oid  = tostring(claims.oid)
+| extend caller_type = tostring(parse_json(tostring(Authorization)).identity_type)
+| where Caller startswith "mi-"                       // managed identity
+| join kind=leftouter identity_baseline on Caller
+| extend ip_anomaly = iff(
+      array_index_of(known_ips, CallerIpAddress) == -1
+      and array_index_of(vnet_egress, CallerIpAddress) == -1,
+      true, false)
+| where ip_anomaly
+| project
+    TimeGenerated,
+    CorrelationId,
+    OperationNameValue,
+    Caller,
+    caller_oid,
+    CallerIpAddress,
+    ResourceId,
+    ip_anomaly
+| order by TimeGenerated asc

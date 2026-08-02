@@ -37,16 +37,16 @@
           "attack_id": "P6"
         },
         {
+          "event_id": "2da86a78-c49e-a20e-3268-4b27b95e9093",
+          "attack_id": "P2"
+        },
+        {
           "event_id": "bd2aa399-dac9-46dc-59c0-996daeee6f52",
           "attack_id": "P2"
         },
         {
           "event_id": "667a4084-4853-040b-7a05-814d32feb3e7",
           "attack_id": "P6"
-        },
-        {
-          "event_id": "d419b1b6-73bd-4755-d05a-d7853c1f76eb",
-          "attack_id": "P2"
         },
         {
           "event_id": "cd3ada8b-4f22-22d3-b41a-3dbd199b364f",
@@ -115,8 +115,8 @@
       ],
       "fp_events": [],
       "fn_events": [
-        "eaede5fe-878f-78e2-978a-a2447c462dda",
-        "4d58fed8-a728-e7ec-a0fa-5f6b8a880627"
+        "4d58fed8-a728-e7ec-a0fa-5f6b8a880627",
+        "eaede5fe-878f-78e2-978a-a2447c462dda"
       ]
     },
     "04": {
@@ -142,19 +142,19 @@
       "mttd_mean_sec": 9.0,
       "tp_events": [
         {
-          "event_id": "37dc2c9a-7a52-36bb-4734-865425feeaa4",
-          "attack_id": "P7"
-        },
-        {
-          "event_id": "83bdceca-5ffb-82d2-d59a-32a99ed5ebe1",
-          "attack_id": "P8"
-        },
-        {
           "event_id": "17ee5bb9-cda1-a2a3-c984-a24b9c429ca4",
           "attack_id": "P7"
         },
         {
+          "event_id": "37dc2c9a-7a52-36bb-4734-865425feeaa4",
+          "attack_id": "P7"
+        },
+        {
           "event_id": "9317de23-f074-9d0b-7d52-b20cf1cb80b2",
+          "attack_id": "P8"
+        },
+        {
+          "event_id": "83bdceca-5ffb-82d2-d59a-32a99ed5ebe1",
           "attack_id": "P8"
         }
       ],
@@ -185,11 +185,11 @@
       "mttd_mean_sec": 0.0,
       "tp_events": [
         {
-          "event_id": "893697b5-9048-1194-f309-ffea518f32cf",
+          "event_id": "1799e278-6d37-4842-1599-e3e9c8fe21da",
           "attack_id": "P4"
         },
         {
-          "event_id": "1799e278-6d37-4842-1599-e3e9c8fe21da",
+          "event_id": "893697b5-9048-1194-f309-ffea518f32cf",
           "attack_id": "P4"
         }
       ],

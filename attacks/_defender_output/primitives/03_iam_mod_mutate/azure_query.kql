@@ -1,0 +1,45 @@
+// PathTriage Primitive 03 — Role definition mutation (Azure)
+//
+// Detects: a write to a custom role definition, gated on the mutation having
+// persisted. Finding 2 established that Azure accepts an over-reaching PUT
+// with 200 OK and reverts it server-side within seconds, so the write event
+// alone is not evidence of escalation.
+//
+// Covers Azure attack path: Z4 (custom role definition abuse).
+// AWS counterpart: primitives/03_iam_mod_mutate/cloudtrail_lake_query.sql
+//
+// The gate below approximates persistence by requiring a subsequent
+// control-plane write by the same principal within a short window — the
+// action the mutated role would newly permit. A mutation that was reverted
+// leaves the write event but not the follow-on.
+
+let lookback     = 24h;
+let persist_gate = 10m;
+let mutations =
+    AzureActivity
+    | where TimeGenerated > ago(lookback)
+    | where OperationNameValue =~ "MICROSOFT.AUTHORIZATION/ROLEDEFINITIONS/WRITE"
+    | where ActivityStatusValue == "Success"
+    | project mut_time = TimeGenerated, Caller, CallerIpAddress,
+              mut_corr = CorrelationId, role_def = ResourceId;
+let follow_on =
+    AzureActivity
+    | where TimeGenerated > ago(lookback)
+    | where OperationNameValue endswith "/WRITE"
+       or OperationNameValue endswith "/ACTION"
+    | where OperationNameValue !~ "MICROSOFT.AUTHORIZATION/ROLEDEFINITIONS/WRITE"
+    | project use_time = TimeGenerated, Caller, use_op = OperationNameValue,
+              use_corr = CorrelationId;
+mutations
+| join kind=inner follow_on on Caller
+| where use_time between (mut_time .. (mut_time + persist_gate))
+| project
+    mut_time,
+    Caller,
+    CallerIpAddress,
+    role_def,
+    use_op,
+    use_time,
+    gap_seconds = datetime_diff('second', use_time, mut_time),
+    CorrelationId = mut_corr
+| order by mut_time asc

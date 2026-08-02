@@ -1,0 +1,183 @@
+{
+  "per_primitive": {
+    "01": {
+      "primitive": "01",
+      "name": "IMDS / managed-identity extraction",
+      "covered_paths": [
+        "Z1",
+        "Z8"
+      ],
+      "detected_paths": [
+        "Z1",
+        "Z8"
+      ],
+      "fires": 7,
+      "tp": 5,
+      "fp": 2,
+      "fn": 0,
+      "benign_fp": 0,
+      "cross_path_fp": 2,
+      "cross_path_fp_paths": [
+        "Z3",
+        "Z4"
+      ],
+      "precision": 1.0,
+      "precision_strict": 0.7143,
+      "event_recall": 1.0,
+      "attack_recall": 1.0,
+      "f1": 1.0,
+      "mttd_per_path": {
+        "Z1": 8.0,
+        "Z8": 6.0
+      },
+      "mttd_mean_sec": 7.0,
+      "fp_events": [
+        "21599e3e-9c8f-e21d-a802-70815fe85df2",
+        "2e9d3411-9f33-74ce-bd4d-3fd81b6ee7b3"
+      ],
+      "fn_events": []
+    },
+    "02": {
+      "primitive": "02",
+      "name": "IAM modification (assign)",
+      "covered_paths": [
+        "Z3"
+      ],
+      "detected_paths": [
+        "Z3"
+      ],
+      "fires": 1,
+      "tp": 1,
+      "fp": 0,
+      "fn": 1,
+      "benign_fp": 0,
+      "cross_path_fp": 0,
+      "cross_path_fp_paths": [],
+      "precision": 1.0,
+      "precision_strict": 1.0,
+      "event_recall": 0.5,
+      "attack_recall": 1.0,
+      "f1": 0.6667,
+      "mttd_per_path": {
+        "Z3": 0.0
+      },
+      "mttd_mean_sec": 0.0,
+      "fp_events": [],
+      "fn_events": [
+        "21599e3e-9c8f-e21d-a802-70815fe85df2"
+      ]
+    },
+    "03": {
+      "primitive": "03",
+      "name": "IAM modification (mutate)",
+      "covered_paths": [
+        "Z4"
+      ],
+      "detected_paths": [
+        "Z4"
+      ],
+      "fires": 1,
+      "tp": 1,
+      "fp": 0,
+      "fn": 1,
+      "benign_fp": 0,
+      "cross_path_fp": 0,
+      "cross_path_fp_paths": [],
+      "precision": 1.0,
+      "precision_strict": 1.0,
+      "event_recall": 0.5,
+      "attack_recall": 1.0,
+      "f1": 0.6667,
+      "mttd_per_path": {
+        "Z4": 0.0
+      },
+      "mttd_mean_sec": 0.0,
+      "fp_events": [],
+      "fn_events": [
+        "2e9d3411-9f33-74ce-bd4d-3fd81b6ee7b3"
+      ]
+    },
+    "04": {
+      "primitive": "04",
+      "name": "Credential discovery",
+      "covered_paths": [
+        "Z2",
+        "Z5",
+        "Z6"
+      ],
+      "detected_paths": [
+        "Z2",
+        "Z5",
+        "Z6"
+      ],
+      "fires": 3,
+      "tp": 3,
+      "fp": 0,
+      "fn": 3,
+      "benign_fp": 0,
+      "cross_path_fp": 0,
+      "cross_path_fp_paths": [],
+      "precision": 1.0,
+      "precision_strict": 1.0,
+      "event_recall": 0.5,
+      "attack_recall": 1.0,
+      "f1": 0.6667,
+      "mttd_per_path": {
+        "Z2": 0.0,
+        "Z5": 0.0,
+        "Z6": 0.0
+      },
+      "mttd_mean_sec": 0.0,
+      "fp_events": [],
+      "fn_events": [
+        "2d59a32a-99ed-5ebe-1bd8-12cb504e1427",
+        "2f01b721-0760-474f-36e8-b5359309cc62",
+        "b4734865-425f-eeaa-4e2f-e981b29ee11b"
+      ]
+    },
+    "05": {
+      "primitive": "05",
+      "name": "Trust topology",
+      "covered_paths": [
+        "Z7"
+      ],
+      "detected_paths": [
+        "Z7"
+      ],
+      "fires": 1,
+      "tp": 1,
+      "fp": 0,
+      "fn": 1,
+      "benign_fp": 0,
+      "cross_path_fp": 0,
+      "cross_path_fp_paths": [],
+      "precision": 1.0,
+      "precision_strict": 1.0,
+      "event_recall": 0.5,
+      "attack_recall": 1.0,
+      "f1": 0.6667,
+      "mttd_per_path": {
+        "Z7": 0.0
+      },
+      "mttd_mean_sec": 0.0,
+      "fp_events": [],
+      "fn_events": [
+        "996fafb8-93cc-b491-92be-8f6688437717"
+      ]
+    }
+  },
+  "aggregate": {
+    "macro_precision": 1.0,
+    "macro_event_recall": 0.6,
+    "macro_attack_recall": 1.0,
+    "macro_f1": 0.7334,
+    "macro_mttd_sec": 1.4,
+    "paths_detected": 8,
+    "paths_covered": 8
+  },
+  "coverage_gate": {
+    "all_precision_ge_0.95": true,
+    "all_attack_recall_1.0": true,
+    "median_mttd_le_60": true
+  }
+}

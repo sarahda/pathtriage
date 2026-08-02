@@ -1,0 +1,56 @@
+// PathTriage Primitive 04 — Credential discovery and off-source use (Azure)
+//
+// Detects: a read of a surface that can hold a credential — Key Vault secret,
+// storage account key, App Service configuration — followed by a sign-in from
+// a principal that had not signed in during the baseline window.
+//
+// Covers Azure attack paths: Z2 (SP credential in app settings),
+//                            Z5 (Key Vault secret),
+//                            Z6 (storage account key).
+// AWS counterpart: primitives/04_credential_discovery/cloudtrail_lake_query.sql
+//
+// Note on Z6. Finding 3 records that shared-key access to storage does not
+// appear in the Activity Log at all, so the listKeys call is the only
+// control-plane observable. The join below therefore keys on the subsequent
+// service-principal sign-in rather than on data-plane access.
+
+let lookback      = 24h;
+let baseline_days = 30d;
+let correlate     = 30m;
+let known_principals =
+    AADServicePrincipalSignInLogs
+    | where TimeGenerated between (ago(baseline_days) .. ago(lookback))
+    | distinct ServicePrincipalId;
+let credential_reads =
+    AzureActivity
+    | where TimeGenerated > ago(lookback)
+    | where OperationNameValue in~ (
+          "MICROSOFT.KEYVAULT/VAULTS/SECRETS/READ",
+          "MICROSOFT.STORAGE/STORAGEACCOUNTS/LISTKEYS/ACTION",
+          "MICROSOFT.WEB/SITES/CONFIG/LIST/ACTION"
+      )
+    | where ActivityStatusValue == "Success"
+    | project read_time = TimeGenerated, reader = Caller,
+              read_ip = CallerIpAddress, read_op = OperationNameValue,
+              read_resource = ResourceId, read_corr = CorrelationId;
+let new_signins =
+    AADServicePrincipalSignInLogs
+    | where TimeGenerated > ago(lookback)
+    | where ResultType == 0
+    | where ServicePrincipalId !in (known_principals)
+    | project signin_time = TimeGenerated, sp = ServicePrincipalName,
+              sp_id = ServicePrincipalId, signin_ip = IPAddress;
+credential_reads
+| join kind=inner (new_signins) on $left.read_time == $right.signin_time
+| where signin_time between (read_time .. (read_time + correlate))
+| project
+    read_time,
+    reader,
+    read_op,
+    read_resource,
+    signin_time,
+    sp,
+    signin_ip,
+    gap_seconds = datetime_diff('second', signin_time, read_time),
+    CorrelationId = read_corr
+| order by read_time asc

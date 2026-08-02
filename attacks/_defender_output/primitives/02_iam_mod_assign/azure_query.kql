@@ -1,0 +1,34 @@
+// PathTriage Primitive 02 — Role assignment creation (Azure)
+//
+// Detects: creation of a role assignment granting a privileged built-in role,
+// where the grant is made by a principal that is not an established
+// administrator.
+//
+// Covers Azure attack path: Z3 (role assignment manipulation).
+// AWS counterpart: primitives/02_iam_mod_assign/cloudtrail_lake_query.sql
+//
+// The assign/mutate split matters here. This primitive sees a NEW record in
+// the role-assignment surface, which a role-assignment audit will show. The
+// mutate case (primitive 03) does not create such a record.
+
+let lookback = 24h;
+let privileged_roles = dynamic([
+    "Owner", "Contributor", "User Access Administrator",
+    "Role Based Access Control Administrator"
+]);
+AzureActivity
+| where TimeGenerated > ago(lookback)
+| where OperationNameValue =~ "MICROSOFT.AUTHORIZATION/ROLEASSIGNMENTS/WRITE"
+| where ActivityStatusValue == "Success"
+| extend props    = todynamic(tostring(Properties))
+| extend role_def = tostring(props.roleDefinitionId)
+| extend grantee  = tostring(props.principalId)
+| project
+    TimeGenerated,
+    CorrelationId,
+    Caller,
+    CallerIpAddress,
+    grantee,
+    role_def,
+    scope = ResourceId
+| order by TimeGenerated asc

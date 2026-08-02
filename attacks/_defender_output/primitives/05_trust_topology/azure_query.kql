@@ -1,0 +1,47 @@
+// PathTriage Primitive 05 — Trust topology traversal (Azure)
+//
+// Detects: a role granted to a second principal, followed by that principal
+// signing in and exercising the grant. This is the Azure analogue of a
+// chained sts:AssumeRole; per Finding 1 the direct analogue is closed at the
+// identity platform, so the reachable variant is an authorisation cascade.
+//
+// Covers Azure attack path: Z7 (MI/SP role cascade).
+// AWS counterpart: primitives/05_trust_topology/cloudtrail_lake_query.sql
+//
+// D-Z7-03 records that Azure role assignments take 30-60 seconds to reach the
+// token validation layer. That propagation delay is itself part of the
+// signature: grant, gap, then use by the granted identity. The AWS analogue
+// propagates near-instantly and so produces no comparable gap.
+
+let lookback     = 24h;
+let cascade_gate = 15m;
+let grants =
+    AzureActivity
+    | where TimeGenerated > ago(lookback)
+    | where OperationNameValue =~ "MICROSOFT.AUTHORIZATION/ROLEASSIGNMENTS/WRITE"
+    | where ActivityStatusValue == "Success"
+    | extend props = todynamic(tostring(Properties))
+    | project grant_time = TimeGenerated, granter = Caller,
+              granter_ip = CallerIpAddress,
+              grantee_id = tostring(props.principalId),
+              grant_corr = CorrelationId;
+let grantee_use =
+    AADServicePrincipalSignInLogs
+    | where TimeGenerated > ago(lookback)
+    | where ResultType == 0
+    | project use_time = TimeGenerated, grantee_id = ServicePrincipalId,
+              grantee = ServicePrincipalName, use_ip = IPAddress;
+grants
+| join kind=inner grantee_use on grantee_id
+| where use_time between (grant_time .. (grant_time + cascade_gate))
+| where granter != grantee
+| project
+    grant_time,
+    granter,
+    granter_ip,
+    grantee,
+    use_time,
+    use_ip,
+    propagation_gap_seconds = datetime_diff('second', use_time, grant_time),
+    CorrelationId = grant_corr
+| order by grant_time asc
