@@ -19,7 +19,8 @@ gap, and both arms of the Azure Z4 privilege-escalation guard.
 - **Azure arm complete** — 8 / 8 paths verified end-to-end ✅
 - **Catalogue total** — 16 / 16 paths verified
 - **Tool**: `pathtriage scan | discover | rank | detail` — IAM enumeration, BFS path discovery, and rubric-based ranking, with an offline fixture mode (Azure enumerator: catalogue documented, integration deferred)
-- **Defender-output module**: methodology + 5 primitives committed (`attacks/_defender_output/`); evaluation complete — macro precision 1.000, attack-level recall 1.000, mean MTTD 9.2 s over a 700,023-event corpus
+- **Defender-output module**: methodology + 5 primitives committed (`attacks/_defender_output/`), each with a CloudTrail Lake query and a KQL counterpart
+- **Evaluation complete on both clouds** — AWS: precision 1.000, attack-level recall 1.000, MTTD 9.2 s over a 700,023-event CloudTrail corpus. Azure: 1.000 / 1.000 / 1.4 s over a 738,628-event Activity Log and Entra sign-in corpus. 16/16 paths detected
 
 ---
 
@@ -174,6 +175,8 @@ pathtriage/
 │       ├── PLAN.md
 │       ├── methodology/                              # corpus generators + protocol
 │       ├── evaluation/                               # corpora, harness, results
+│       │   # each primitive holds cloudtrail_lake_query.sql,
+│       │   # azure_query.kql, scp_snippet.json and azure_symmetry.md
 │       └── primitives/
 │           ├── 01_imds_extraction/
 │           ├── 02_iam_mod_assign/
@@ -191,7 +194,7 @@ pathtriage/
 
 ## Reproducing the results
 
-Every quantitative claim in the Technical Report can be regenerated from a clean clone. Steps 1–5 run entirely offline.
+Every quantitative claim in the Technical Report can be regenerated from a clean clone. Steps 1–5 run entirely offline; step 6 needs a cloud account.
 
 ### 1. Path discovery and ranking (offline)
 
@@ -229,7 +232,7 @@ macro precision 1.000, attack-level recall 1.000, mean MTTD 9.2 s —
 which is a stronger result than byte equality would be, since the
 benign traffic differs.
 
-### 3. Re-run the detection evaluation
+### 3. Re-run the AWS detection evaluation
 
 ```bash
 cd attacks/_defender_output/evaluation
@@ -270,7 +273,51 @@ jq -r '.per_primitive | to_entries[] |
   attacks/_defender_output/evaluation/results/primitive_evaluation.json
 ```
 
-### 4. Rubric validation (optional)
+### 4. Re-run the Azure detection evaluation
+
+The Azure side has its own corpus, in Azure's log formats. Unlike the
+AWS generator, the Azure one takes no date-derived defaults, so this
+reproduces byte-for-byte on any day.
+
+```bash
+cd attacks/_defender_output/evaluation
+
+python3 ../methodology/generate_azure_baseline.py \
+    --rate 100000 --days 7 --seed 42 \
+    --start-date 2026-06-30 --version 2026-08-02-1 \
+    --activity-output corpora/azure_activity_baseline.jsonl \
+    --signin-output   corpora/azure_signin_baseline.jsonl
+
+shasum -a 256 corpora/azure_activity_baseline.jsonl
+# expect: 004133d181c8a24650415bb1ac0387a64007eed18d483d02e35514815bb78ea0
+
+python3 run_azure_evaluation.py
+cd -
+```
+
+Expected:
+
+| Metric | Value |
+|---|---|
+| Macro precision | 1.000 |
+| Attack-level recall | 1.000 |
+| Event-level recall | 0.600 |
+| Mean MTTD | 1.4 s |
+| Paths detected | 8 / 8 |
+
+The benign corpus is 833 MB and is generated rather than committed;
+the attack corpus is 28 KB and is in the repository. Method, results
+and limitations are in
+`attacks/_defender_output/evaluation/azure_evaluation_report.md`.
+
+> The Azure primitives are authored in KQL, under
+> `primitives/*/azure_query.kql`. DuckDB does not run KQL, so the
+> harness executes SQL translations that apply the same conditions to
+> the same fields — the same arrangement as the AWS side. The
+> committed KQL has not been executed against a live Log Analytics
+> workspace.
+
+### 5. Rubric validation (optional)
 
 ```bash
 pip install scipy numpy matplotlib
@@ -279,7 +326,7 @@ python3 report/rubric_validation/cvss_comparison.py
 
 Reproduces the CVSS cross-comparison (Spearman ρ) and the scatter plot used in Chapter 8.
 
-### 5. Reproducing a single attack path (requires cloud credentials)
+### 6. Reproducing a single attack path (requires cloud credentials)
 
 This step deploys real infrastructure into your own account and will incur cost. Tear down with `terraform destroy` when finished.
 
@@ -308,7 +355,7 @@ Two things in the Technical Report cannot be regenerated from this repository al
 
 **The attack-path executions.** The sixteen verification logs in `attacks/*/verification_log.txt` were captured against live AWS and Azure accounts. The Terraform is committed and the per-path READMEs document the expected output, but the logs themselves are evidence of past runs, not something this repository can replay.
 
-**CloudTrail Lake execution.** The detection primitives are authored in CloudTrail Lake SQL. The evaluation above runs a DuckDB translation of the same queries against a local corpus, which is what makes it free and reproducible. Validation against a live CloudTrail Lake feed has not been performed and is listed as future work in the Technical Report.
+**CloudTrail Lake execution.** The detection primitives are authored in CloudTrail Lake SQL. The evaluation above runs a DuckDB translation of the same queries against a local corpus, which is what makes it free and reproducible. Validation against a live CloudTrail Lake feed has not been performed and is listed as future work in the Technical Report. The same applies on the Azure side: the primitives are authored in KQL and evaluated through a SQL translation, and the KQL has never run in a Log Analytics workspace.
 
 ---
 
